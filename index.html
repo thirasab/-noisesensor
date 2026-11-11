@@ -12,65 +12,61 @@
         .map-container {
             position: relative;
             display: inline-block;
+            width: 100%;
+            max-width: 1000px;
         }
-        /* ตำแหน่งจุดป้ายแสดงผล (ปรับค่า top และ left เป็นเปอร์เซ็นต์ % ตามจุดสีแดงในรูปของคุณ) */
+        /* ปรับตำแหน่งและขนาดให้ยืดหยุ่นบนมือถือ */
         .sensor-badge {
             position: absolute;
             transform: translate(-50%, -50%);
-            transition: all 0.3s ease;
+            white-space: nowrap;
         }
     </style>
 </head>
-<body class="bg-slate-900 text-white font-sans min-h-screen flex flex-col items-center p-4">
+<body class="bg-slate-900 text-white font-sans min-h-screen flex flex-col items-center p-2 md:p-4">
 
-    <header class="mb-4 text-center">
-        <h1 class="text-2xl font-bold text-emerald-400">SCG Cement Mill - IoT Environmental Monitoring</h1>
-        <p class="text-sm text-slate-400" id="connection-status">Connecting to HiveMQ Cloud...</p>
+    <header class="mb-2 md:mb-4 text-center">
+        <h1 class="text-lg md:text-2xl font-bold text-emerald-400">SCG Cement - IoT Monitoring</h1>
+        <p class="text-xs md:text-sm text-slate-400" id="connection-status">Connecting to HiveMQ Cloud...</p>
     </header>
 
-    <!-- พื้นหลังแผนที่โรงงาน (ตั้งชื่อไฟล์รูปใน GitHub เป็น map-bg.jpg) -->
+    <!-- พื้นหลังแผนที่โรงงาน -->
     <div class="map-container shadow-2xl rounded-xl overflow-hidden border border-slate-700">
-        <img src="map-bg.jpg" alt="Plant Map" class="max-w-full h-auto block">
+        <img src="map-bg.jpg" alt="Plant Map" class="w-full h-auto block">
 
-        <!-- 
-          จุดแสดงผลเซนเซอร์ (พิกัด Top / Left เป็นเปอร์เซ็นต์จากภาพแผนที่ของคุณ)
-          คุณสามารถปรับตัวเลข style="top: Y%; left: X%;" ให้ตรงกับจุดสีแดงในแผนที่เป๊ะๆ ได้ครับ
-        -->
-
-        <!-- จุดที่ 1: Temp & Humidity (ID 1) -->
-        <div class="sensor-badge bg-slate-900/90 border border-emerald-500 rounded-lg p-2 shadow-lg text-xs" style="top: 75%; left: 27%;">
-            <div class="font-bold text-emerald-300 border-b border-slate-700 pb-1 mb-1">📍 จุดที่ 1 (ENV)</div>
-            <div>🌡️ <span id="val-temp">--</span> °C</div>
-            <div>💧 <span id="val-hum">--</span> %RH</div>
+        <!-- จุดที่ 1: Temp & Humidity (ID 1) - ตัวหนังสือเล็กกะทัดรัดสำหรับมือถือ -->
+        <div class="sensor-badge bg-slate-900/90 border border-emerald-500 rounded px-1.5 py-1 md:p-2 shadow-lg text-[10px] md:text-xs" style="top: 75%; left: 27%;">
+            <div class="font-bold text-emerald-300 hidden md:block border-b border-slate-700 pb-0.5 mb-0.5">📍 จุดที่ 1 (ENV)</div>
+            <div>🌡️ <span id="val-temp">--</span>°C</div>
+            <div>💧 <span id="val-hum">--</span>%</div>
         </div>
 
         <!-- จุดที่ 2: Noise 1 (ID 2) -->
-        <div class="sensor-badge bg-slate-900/90 border border-blue-500 rounded-lg p-2 shadow-lg text-xs" style="top: 57%; left: 38%;">
-            <div class="font-bold text-blue-300 border-b border-slate-700 pb-1 mb-1">🔊 Noise 1 (ID 2)</div>
+        <div class="sensor-badge bg-slate-900/90 border border-blue-500 rounded px-1.5 py-1 md:p-2 shadow-lg text-[10px] md:text-xs" style="top: 57%; left: 38%;">
+            <div class="font-bold text-blue-300 hidden md:block border-b border-slate-700 pb-0.5 mb-0.5">🔊 N1</div>
             <div>📢 <span id="val-noise1">--</span> dB</div>
         </div>
 
         <!-- จุดที่ 3: Noise 2 (ID 3) -->
-        <div class="sensor-badge bg-slate-900/90 border border-blue-500 rounded-lg p-2 shadow-lg text-xs" style="top: 44%; left: 52%;">
-            <div class="font-bold text-blue-300 border-b border-slate-700 pb-1 mb-1">🔊 Noise 2 (ID 3)</div>
+        <div class="sensor-badge bg-slate-900/90 border border-blue-500 rounded px-1.5 py-1 md:p-2 shadow-lg text-[10px] md:text-xs" style="top: 44%; left: 52%;">
+            <div class="font-bold text-blue-300 hidden md:block border-b border-slate-700 pb-0.5 mb-0.5">🔊 N2</div>
             <div>📢 <span id="val-noise2">--</span> dB</div>
         </div>
 
         <!-- จุดที่ 4: Noise 3 (ID 4) -->
-        <div class="sensor-badge bg-slate-900/90 border border-blue-500 rounded-lg p-2 shadow-lg text-xs" style="top: 19%; left: 63%;">
-            <div class="font-bold text-blue-300 border-b border-slate-700 pb-1 mb-1">🔊 Noise 3 (ID 4)</div>
+        <div class="sensor-badge bg-slate-900/90 border border-blue-500 rounded px-1.5 py-1 md:p-2 shadow-lg text-[10px] md:text-xs" style="top: 19%; left: 63%;">
+            <div class="font-bold text-blue-300 hidden md:block border-b border-slate-700 pb-0.5 mb-0.5">🔊 N3</div>
             <div>📢 <span id="val-noise3">--</span> dB</div>
         </div>
 
         <!-- จุดที่ 5: Noise 4 (ID 5) -->
-        <div class="sensor-badge bg-slate-900/90 border border-blue-500 rounded-lg p-2 shadow-lg text-xs" style="top: 10%; left: 78%;">
-            <div class="font-bold text-blue-300 border-b border-slate-700 pb-1 mb-1">🔊 Noise 4 (ID 5)</div>
+        <div class="sensor-badge bg-slate-900/90 border border-blue-500 rounded px-1.5 py-1 md:p-2 shadow-lg text-[10px] md:text-xs" style="top: 10%; left: 78%;">
+            <div class="font-bold text-blue-300 hidden md:block border-b border-slate-700 pb-0.5 mb-0.5">🔊 N4</div>
             <div>📢 <span id="val-noise4">--</span> dB</div>
         </div>
     </div>
 
     <script>
-        // ตั้งค่าเชื่อมต่อ HiveMQ Cloud (ใช้ TLS Websocket Port 8884)
         const brokerUrl = 'wss://da20fee687434cce93e355ebceb7da00.s2.eu.hivemq.cloud:8884/mqtt';
         const topic = 'scg/cement/environment_monitoring';
 
@@ -92,46 +88,29 @@
         const noise4El = document.getElementById('val-noise4');
 
         client.on('connect', () => {
-            statusEl.textContent = 'Status: Connected (Live Data)';
+            statusEl.textContent = 'Status: Connected';
             statusEl.classList.remove('text-slate-400');
             statusEl.classList.add('text-emerald-400');
             client.subscribe(topic);
         });
 
         client.on('error', (err) => {
-            statusEl.textContent = 'Connection Error: ' + err;
+            statusEl.textContent = 'Error: ' + err;
             statusEl.classList.add('text-red-400');
         });
 
         client.on('message', (t, payload) => {
-            console.log("Receive Topic:", t); 
-            console.log("Receive Payload:", payload.toString()); 
-            
             if (t === topic) {
                 try {
                     const data = JSON.parse(payload.toString());
-                    
-                    // รองรับทั้งกรณีที่ ESP32 ส่งมาเป็น temperature หรือสะกดตกหล่น tenperature
                     const tempValue = data.temperature !== undefined ? data.temperature : data.tenperature;
                     
-                    if (tempValue !== undefined) {
-                        tempEl.textContent = tempValue.toFixed(1);
-                    }
-                    if (data.humidity !== undefined) {
-                        humEl.textContent = data.humidity.toFixed(1);
-                    }
-                    if (data.noise1 !== undefined) {
-                        noise1El.textContent = data.noise1.toFixed(1);
-                    }
-                    if (data.noise2 !== undefined) {
-                        noise2El.textContent = data.noise2.toFixed(1);
-                    }
-                    if (data.noise3 !== undefined) {
-                        noise3El.textContent = data.noise3.toFixed(1);
-                    }
-                    if (data.noise4 !== undefined) {
-                        noise4El.textContent = data.noise4.toFixed(1);
-                    }
+                    if (tempValue !== undefined) tempEl.textContent = tempValue.toFixed(1);
+                    if (data.humidity !== undefined) humEl.textContent = data.humidity.toFixed(1);
+                    if (data.noise1 !== undefined) noise1El.textContent = data.noise1.toFixed(1);
+                    if (data.noise2 !== undefined) noise2El.textContent = data.noise2.toFixed(1);
+                    if (data.noise3 !== undefined) noise3El.textContent = data.noise3.toFixed(1);
+                    if (data.noise4 !== undefined) noise4El.textContent = data.noise4.toFixed(1);
                 } catch (e) {
                     console.error('Parse JSON error:', e);
                 }
