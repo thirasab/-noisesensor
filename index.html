@@ -1,1 +1,117 @@
 
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SCG Cement Plant - Environmental Monitoring</title>
+    <!-- โหลด MQTT Library ผ่าน CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/4.3.7/mqtt.min.js"></script>
+    <!-- Tailwind CSS สำหรับจัดแต่งหน้าเว็บ -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .map-container {
+            position: relative;
+            display: inline-block;
+        }
+        /* ตำแหน่งจุดป้ายแสดงผล (ปรับค่า top และ left เป็นเปอร์เซ็นต์ % ตามจุดสีแดงในรูปของคุณ) */
+        .sensor-badge {
+            position: absolute;
+            transform: translate(-50%, -50%);
+            transition: all 0.3s ease;
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-white font-sans min-h-screen flex flex-col items-center p-4">
+
+    <header class="mb-4 text-center">
+        <h1 class="text-2xl font-bold text-emerald-400">SCG Cement Mill - IoT Environmental Monitoring</h1>
+        <p class="text-sm text-slate-400" id="connection-status">Connecting to MQTT Broker...</p>
+    </header>
+
+    <!-- พื้นหลังแผนที่โรงงาน -->
+    <div class="map-container shadow-2xl rounded-xl overflow-hidden border border-slate-700">
+        <img src="map-bg.jpg" alt="Plant Map" class="max-w-full h-auto block">
+
+        <!-- 
+          จุดแสดงผลเซนเซอร์ (พิกัด Top / Left เป็นเปอร์เซ็นต์จากภาพแผนที่ของคุณ)
+          คุณสามารถปรับแต่งตัวเลข style="top: Y%; left: X%;" ให้ตรงกับจุดสีแดงในรูปเป๊ะๆ ได้เลยครับ
+        -->
+
+        <!-- จุดที่ 1: Temp & Humidity (ID 1) -->
+        <div class="sensor-badge bg-slate-900/90 border border-emerald-500 rounded-lg p-2 shadow-lg text-xs" style="top: 75%; left: 27%;">
+            <div class="font-bold text-emerald-300 border-b border-slate-700 pb-1 mb-1">📍 จุดที่ 1 (ENV)</div>
+            <div>🌡️ <span id="val-temp">--</span> °C</div>
+            <div>💧 <span id="val-hum">--</span> %RH</div>
+        </div>
+
+        <!-- จุดที่ 2: Noise 1 (ID 2) -->
+        <div class="sensor-badge bg-slate-900/90 border border-blue-500 rounded-lg p-2 shadow-lg text-xs" style="top: 57%; left: 38%;">
+            <div class="font-bold text-blue-300 border-b border-slate-700 pb-1 mb-1">🔊 Noise 1</div>
+            <div>📢 <span id="val-noise1">--</span> dB</div>
+        </div>
+
+        <!-- จุดที่ 3: Noise 2 (ID 3) -->
+        <div class="sensor-badge bg-slate-900/90 border border-blue-500 rounded-lg p-2 shadow-lg text-xs" style="top: 44%; left: 52%;">
+            <div class="font-bold text-blue-300 border-b border-slate-700 pb-1 mb-1">🔊 Noise 2</div>
+            <div>📢 <span id="val-noise2">--</span> dB</div>
+        </div>
+
+        <!-- จุดที่ 4: Noise 3 (ID 4) -->
+        <div class="sensor-badge bg-slate-900/90 border border-blue-500 rounded-lg p-2 shadow-lg text-xs" style="top: 19%; left: 63%;">
+            <div class="font-bold text-blue-300 border-b border-slate-700 pb-1 mb-1">🔊 Noise 3</div>
+            <div>📢 <span id="val-noise3">--</span> dB</div>
+        </div>
+
+        <!-- จุดที่ 5: Noise 4 (ID 5) -->
+        <div class="sensor-badge bg-slate-900/90 border border-blue-500 rounded-lg p-2 shadow-lg text-xs" style="top: 10%; left: 78%;">
+            <div class="font-bold text-blue-300 border-b border-slate-700 pb-1 mb-1">🔊 Noise 4</div>
+            <div>📢 <span id="val-noise4">--</span> dB</div>
+        </div>
+    </div>
+
+    <script>
+        // เชื่อมต่อ MQTT ผ่าน WebSocket ของ HiveMQ Public Broker
+        const brokerUrl = 'wss://broker.hivemq.com:8884/mqtt';
+        const topic = 'scg/cement/environment_monitoring';
+
+        const client = mqtt.connect(brokerUrl);
+
+        const statusEl = document.getElementById('connection-status');
+        const tempEl = document.getElementById('val-temp');
+        const humEl = document.getElementById('val-hum');
+        const noise1El = document.getElementById('val-noise1');
+        const noise2El = document.getElementById('val-noise2');
+        const noise3El = document.getElementById('val-noise3');
+        const noise4El = document.getElementById('val-noise4');
+
+        client.on('connect', () => {
+            statusEl.textContent = 'Status: Connected (Live Data)';
+            statusEl.classList.remove('text-slate-400');
+            statusEl.classList.add('text-emerald-400');
+            client.subscribe(topic);
+        });
+
+        client.on('error', (err) => {
+            statusEl.textContent = 'Connection Error: ' + err;
+            statusEl.classList.add('text-red-400');
+        });
+
+        client.on('message', (t, payload) => {
+            if (t === topic) {
+                try {
+                    const data = JSON.parse(payload.toString());
+                    tempEl.textContent = data.temperature.toFixed(1);
+                    humEl.textContent = data.humidity.toFixed(1);
+                    noise1El.textContent = data.noise1.toFixed(1);
+                    noise2El.textContent = data.noise2.toFixed(1);
+                    noise3El.textContent = data.noise3.toFixed(1);
+                    noise4El.textContent = data.noise4.toFixed(1);
+                } catch (e) {
+                    console.error('Parse JSON error:', e);
+                }
+            }
+        });
+    </script>
+</body>
+</html>
