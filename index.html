@@ -9,35 +9,11 @@
     <!-- Tailwind CSS สำหรับจัดแต่งหน้าเว็บ -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* แจ้งเตือนบังคับแนวนอนเฉพาะหน้าจอมือถือแนวตั้ง */
-        #orientation-warning {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background-color: rgba(15, 23, 42, 0.98);
-            z-index: 9999;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            text-align: center;
-            padding: 20px;
-        }
-
-        /* ถ้าเปิดบนมือถือ และอยู่ในแนวตั้ง (portrait) ให้แสดงหน้าต่างเตือนนี้ */
-        @media screen and (max-width: 1024px) and (orientation: portrait) {
-            #orientation-warning {
-                display: flex;
-            }
-        }
-
         .map-container {
             position: relative;
             display: inline-block;
             width: 100%;
-            max-width: 900px;
+            max-width: 1000px;
         }
         .sensor-badge {
             position: absolute;
@@ -46,18 +22,11 @@
         }
     </style>
 </head>
-<body class="bg-slate-900 text-white font-sans min-h-screen flex flex-col items-center justify-center p-2">
+<body class="bg-slate-900 text-white font-sans min-h-screen flex flex-col items-center p-2 md:p-4">
 
-    <!-- หน้าต่างบังคับให้หมุนจอ -->
-    <div id="orientation-warning">
-        <div class="text-5xl mb-4 animate-bounce">📱🔄</div>
-        <h2 class="text-xl font-bold text-emerald-400 mb-2">กรุณาหมุนโทรศัพท์เป็นแนวนอน</h2>
-        <p class="text-sm text-slate-300">เพื่อการแสดงผลแผนที่และค่าเซนเซอร์ที่ชัดเจนเต็มตา</p>
-    </div>
-
-    <header class="mb-2 text-center">
-        <h1 class="text-lg md:text-xl font-bold text-emerald-400">SCG Cement - IoT Monitoring</h1>
-        <p class="text-xs text-slate-400" id="connection-status">Connecting to HiveMQ Cloud...</p>
+    <header class="mb-2 md:mb-4 text-center">
+        <h1 class="text-lg md:text-2xl font-bold text-emerald-400">SCG Cement - IoT Monitoring</h1>
+        <p class="text-xs md:text-sm text-slate-400" id="connection-status">Connecting to HiveMQ Cloud...</p>
     </header>
 
     <!-- พื้นหลังแผนที่โรงงาน -->
@@ -65,30 +34,40 @@
         <img src="map-bg.jpg" alt="Plant Map" class="w-full h-auto block">
 
         <!-- จุดที่ 1: Temp & Humidity (ID 1) -->
-        <div class="sensor-badge bg-slate-900/95 border border-emerald-500 rounded px-1.5 py-0.5 shadow-lg text-[10px] md:text-xs" style="top: 75%; left: 27%;">
+        <div class="sensor-badge bg-slate-900/90 border border-emerald-500 rounded px-1.5 py-1 md:p-2 shadow-lg text-[10px] md:text-xs" style="top: 75%; left: 27%;">
+            <div class="font-bold text-emerald-300 hidden md:block border-b border-slate-700 pb-0.5 mb-0.5">📍 จุดที่ 1 (ENV)</div>
             <div>🌡️ <span id="val-temp">--</span>°C</div>
             <div>💧 <span id="val-hum">--</span>%</div>
         </div>
 
         <!-- จุดที่ 2: Noise 1 (ID 2) -->
-        <div class="sensor-badge bg-slate-900/95 border border-blue-500 rounded px-1.5 py-0.5 shadow-lg text-[10px] md:text-xs" style="top: 57%; left: 38%;">
-            <div>🔊 N1: <span id="val-noise1">--</span> dB</div>
+        <div class="sensor-badge bg-slate-900/90 border border-blue-500 rounded px-1.5 py-1 md:p-2 shadow-lg text-[10px] md:text-xs" style="top: 57%; left: 38%;">
+            <div class="font-bold text-blue-300 hidden md:block border-b border-slate-700 pb-0.5 mb-0.5">🔊 N1</div>
+            <div>📢 <span id="val-noise1">--</span> dB</div>
         </div>
 
         <!-- จุดที่ 3: Noise 2 (ID 3) -->
-        <div class="sensor-badge bg-slate-900/95 border border-blue-500 rounded px-1.5 py-0.5 shadow-lg text-[10px] md:text-xs" style="top: 44%; left: 52%;">
-            <div>🔊 N2: <span id="val-noise2">--</span> dB</div>
+        <div class="sensor-badge bg-slate-900/90 border border-blue-500 rounded px-1.5 py-1 md:p-2 shadow-lg text-[10px] md:text-xs" style="top: 44%; left: 52%;">
+            <div class="font-bold text-blue-300 hidden md:block border-b border-slate-700 pb-0.5 mb-0.5">🔊 N2</div>
+            <div>📢 <span id="val-noise2">--</span> dB</div>
         </div>
 
         <!-- จุดที่ 4: Noise 3 (ID 4) -->
-        <div class="sensor-badge bg-slate-900/95 border border-blue-500 rounded px-1.5 py-0.5 shadow-lg text-[10px] md:text-xs" style="top: 19%; left: 63%;">
-            <div>🔊 N3: <span id="val-noise3">--</span> dB</div>
+        <div class="sensor-badge bg-slate-900/90 border border-blue-500 rounded px-1.5 py-1 md:p-2 shadow-lg text-[10px] md:text-xs" style="top: 19%; left: 63%;">
+            <div class="font-bold text-blue-300 hidden md:block border-b border-slate-700 pb-0.5 mb-0.5">🔊 N3</div>
+            <div>📢 <span id="val-noise3">--</span> dB</div>
         </div>
 
         <!-- จุดที่ 5: Noise 4 (ID 5) -->
-        <div class="sensor-badge bg-slate-900/95 border border-blue-500 rounded px-1.5 py-0.5 shadow-lg text-[10px] md:text-xs" style="top: 10%; left: 78%;">
-            <div>🔊 N4: <span id="val-noise4">--</span> dB</div>
+        <div class="sensor-badge bg-slate-900/90 border border-blue-500 rounded px-1.5 py-1 md:p-2 shadow-lg text-[10px] md:text-xs" style="top: 10%; left: 78%;">
+            <div class="font-bold text-blue-300 hidden md:block border-b border-slate-700 pb-0.5 mb-0.5">🔊 N4</div>
+            <div>📢 <span id="val-noise4">--</span> dB</div>
         </div>
+    </div>
+
+    <!-- ข้อความแจ้งเตือนใต้ภาพ -->
+    <div class="mt-3 text-center text-xs text-amber-400 bg-slate-800/80 px-3 py-1.5 rounded-lg border border-amber-500/30">
+        📱 แนะนำให้หมุนจอมือถือเป็นแนวนอนเพื่อการแสดงผลที่ชัดเจนยิ่งขึ้น
     </div>
 
     <script>
