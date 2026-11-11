@@ -104,8 +104,8 @@
         });
 
         client.on('message', (t, payload) => {
-            console.log("Receive Topic:", t);
-            console.log("Receive Payload:", payload.toString());
+            console.log("Receive Topic:", t); // พิมพ์ Topic ที่ได้รับ
+            console.log("Receive Payload:", payload.toString()); // พิมพ์ข้อมูล JSON ที่ได้รับ
             
             if (t === topic) {
                 try {
