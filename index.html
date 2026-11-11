@@ -104,18 +104,34 @@
         });
 
         client.on('message', (t, payload) => {
-            console.log("Receive Topic:", t); // พิมพ์ Topic ที่ได้รับ
-            console.log("Receive Payload:", payload.toString()); // พิมพ์ข้อมูล JSON ที่ได้รับ
+            console.log("Receive Topic:", t); 
+            console.log("Receive Payload:", payload.toString()); 
             
             if (t === topic) {
                 try {
                     const data = JSON.parse(payload.toString());
-                    tempEl.textContent = data.temperature.toFixed(1);
-                    humEl.textContent = data.humidity.toFixed(1);
-                    noise1El.textContent = data.noise1.toFixed(1);
-                    noise2El.textContent = data.noise2.toFixed(1);
-                    noise3El.textContent = data.noise3.toFixed(1);
-                    noise4El.textContent = data.noise4.toFixed(1);
+                    
+                    // รองรับทั้งกรณีที่ ESP32 ส่งมาเป็น temperature หรือสะกดตกหล่น tenperature
+                    const tempValue = data.temperature !== undefined ? data.temperature : data.tenperature;
+                    
+                    if (tempValue !== undefined) {
+                        tempEl.textContent = tempValue.toFixed(1);
+                    }
+                    if (data.humidity !== undefined) {
+                        humEl.textContent = data.humidity.toFixed(1);
+                    }
+                    if (data.noise1 !== undefined) {
+                        noise1El.textContent = data.noise1.toFixed(1);
+                    }
+                    if (data.noise2 !== undefined) {
+                        noise2El.textContent = data.noise2.toFixed(1);
+                    }
+                    if (data.noise3 !== undefined) {
+                        noise3El.textContent = data.noise3.toFixed(1);
+                    }
+                    if (data.noise4 !== undefined) {
+                        noise4El.textContent = data.noise4.toFixed(1);
+                    }
                 } catch (e) {
                     console.error('Parse JSON error:', e);
                 }
