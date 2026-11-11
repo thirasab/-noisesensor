@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="th">
 <head>
@@ -26,16 +25,16 @@
 
     <header class="mb-4 text-center">
         <h1 class="text-2xl font-bold text-emerald-400">SCG Cement Mill - IoT Environmental Monitoring</h1>
-        <p class="text-sm text-slate-400" id="connection-status">Connecting to MQTT Broker...</p>
+        <p class="text-sm text-slate-400" id="connection-status">Connecting to HiveMQ Cloud...</p>
     </header>
 
-    <!-- พื้นหลังแผนที่โรงงาน -->
+    <!-- พื้นหลังแผนที่โรงงาน (ตั้งชื่อไฟล์รูปใน GitHub เป็น map-bg.jpg) -->
     <div class="map-container shadow-2xl rounded-xl overflow-hidden border border-slate-700">
         <img src="map-bg.jpg" alt="Plant Map" class="max-w-full h-auto block">
 
         <!-- 
           จุดแสดงผลเซนเซอร์ (พิกัด Top / Left เป็นเปอร์เซ็นต์จากภาพแผนที่ของคุณ)
-          คุณสามารถปรับแต่งตัวเลข style="top: Y%; left: X%;" ให้ตรงกับจุดสีแดงในรูปเป๊ะๆ ได้เลยครับ
+          คุณสามารถปรับตัวเลข style="top: Y%; left: X%;" ให้ตรงกับจุดสีแดงในแผนที่เป๊ะๆ ได้ครับ
         -->
 
         <!-- จุดที่ 1: Temp & Humidity (ID 1) -->
@@ -47,35 +46,42 @@
 
         <!-- จุดที่ 2: Noise 1 (ID 2) -->
         <div class="sensor-badge bg-slate-900/90 border border-blue-500 rounded-lg p-2 shadow-lg text-xs" style="top: 57%; left: 38%;">
-            <div class="font-bold text-blue-300 border-b border-slate-700 pb-1 mb-1">🔊 Noise 1</div>
+            <div class="font-bold text-blue-300 border-b border-slate-700 pb-1 mb-1">🔊 Noise 1 (ID 2)</div>
             <div>📢 <span id="val-noise1">--</span> dB</div>
         </div>
 
         <!-- จุดที่ 3: Noise 2 (ID 3) -->
         <div class="sensor-badge bg-slate-900/90 border border-blue-500 rounded-lg p-2 shadow-lg text-xs" style="top: 44%; left: 52%;">
-            <div class="font-bold text-blue-300 border-b border-slate-700 pb-1 mb-1">🔊 Noise 2</div>
+            <div class="font-bold text-blue-300 border-b border-slate-700 pb-1 mb-1">🔊 Noise 2 (ID 3)</div>
             <div>📢 <span id="val-noise2">--</span> dB</div>
         </div>
 
         <!-- จุดที่ 4: Noise 3 (ID 4) -->
         <div class="sensor-badge bg-slate-900/90 border border-blue-500 rounded-lg p-2 shadow-lg text-xs" style="top: 19%; left: 63%;">
-            <div class="font-bold text-blue-300 border-b border-slate-700 pb-1 mb-1">🔊 Noise 3</div>
+            <div class="font-bold text-blue-300 border-b border-slate-700 pb-1 mb-1">🔊 Noise 3 (ID 4)</div>
             <div>📢 <span id="val-noise3">--</span> dB</div>
         </div>
 
         <!-- จุดที่ 5: Noise 4 (ID 5) -->
         <div class="sensor-badge bg-slate-900/90 border border-blue-500 rounded-lg p-2 shadow-lg text-xs" style="top: 10%; left: 78%;">
-            <div class="font-bold text-blue-300 border-b border-slate-700 pb-1 mb-1">🔊 Noise 4</div>
+            <div class="font-bold text-blue-300 border-b border-slate-700 pb-1 mb-1">🔊 Noise 4 (ID 5)</div>
             <div>📢 <span id="val-noise4">--</span> dB</div>
         </div>
     </div>
 
     <script>
-        // เชื่อมต่อ MQTT ผ่าน WebSocket ของ HiveMQ Public Broker
-        const brokerUrl = 'wss://broker.hivemq.com:8884/mqtt';
+        // ตั้งค่าเชื่อมต่อ HiveMQ Cloud (ใช้ TLS Websocket Port 8884)
+        const brokerUrl = 'wss://da20fee687434cce93e355ebceb7da00.s2.eu.hivemq.cloud:8884/mqtt';
         const topic = 'scg/cement/environment_monitoring';
 
-        const client = mqtt.connect(brokerUrl);
+        const options = {
+            clientId: 'web_client_' + Math.random().toString(16).substring(2, 8),
+            username: 'esp32_sensorMonitor', 
+            password: 'Mcl195088', 
+            clean: true
+        };
+
+        const client = mqtt.connect(brokerUrl, options);
 
         const statusEl = document.getElementById('connection-status');
         const tempEl = document.getElementById('val-temp');
@@ -98,6 +104,9 @@
         });
 
         client.on('message', (t, payload) => {
+            console.log("Receive Topic:", t);
+            console.log("Receive Payload:", payload.toString());
+            
             if (t === topic) {
                 try {
                     const data = JSON.parse(payload.toString());
@@ -112,24 +121,6 @@
                 }
             }
         });
-        client.on('message', (t, payload) => {
-    console.log("Receive Topic:", t); // พิมพ์ Topic ที่ได้รับ
-    console.log("Receive Payload:", payload.toString()); // พิมพ์ข้อมูล JSON ที่ได้รับ
-    
-    if (t === topic) {
-        try {
-            const data = JSON.parse(payload.toString());
-            tempEl.textContent = data.temperature.toFixed(1);
-            humEl.textContent = data.humidity.toFixed(1);
-            noise1El.textContent = data.noise1.toFixed(1);
-            noise2El.textContent = data.noise2.toFixed(1);
-            noise3El.textContent = data.noise3.toFixed(1);
-            noise4El.textContent = data.noise4.toFixed(1);
-        } catch (e) {
-            console.error('Parse JSON error:', e);
-        }
-    }
-});
     </script>
 </body>
 </html>
