@@ -2,14 +2,16 @@
 <html lang="th">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- สำคัญ: ตั้งค่า user-scalable=yes และ maximum-scale=5.0 เพื่อให้ใช้นิ้วซูมได้ -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
     <title>SCG Cement - Environmental SCADA</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/4.3.7/mqtt.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .map-container {
             position: relative;
-            display: inline-block;
+            display: block;
+            width: 100%;
         }
         .sensor-badge {
             position: absolute;
@@ -26,109 +28,105 @@
             color: #fca5a5;
         }
         .alarm-text {
-            color: #f87171 !important;
+            color: #fca5a5 !important;
             font-weight: bold;
         }
-        /* ซ่อน Scrollbar แต่ออกแบบให้เลื่อนได้ */
-        .hide-scroll::-webkit-scrollbar { display: none; }
-        .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
-<body class="bg-slate-950 text-slate-200 font-sans min-h-screen flex flex-col p-2 md:p-4">
+<body class="bg-slate-950 text-slate-200 font-sans min-h-screen flex flex-col p-1 md:p-4">
 
-    <!-- 1. Header & Alarm Controls (บีบอัดให้เหมาะกับมือถือ) -->
-    <header class="mb-2 bg-slate-900 border border-slate-700 rounded-lg p-2 md:p-4 shadow-lg">
-        <div class="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-2 md:gap-4">
+    <!-- 1. Header & Alarm Controls -->
+    <header class="mb-2 bg-slate-900 border border-slate-700 rounded-lg p-2 shadow-lg">
+        <div class="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-2">
             
             <div class="flex justify-between items-center">
                 <div>
-                    <h1 class="text-sm md:text-2xl font-bold text-emerald-400 tracking-wide">SCG CEMENT <span class="text-slate-400 text-[10px] md:text-base font-normal">| CM Monitor</span></h1>
-                    <p class="text-[10px] md:text-sm mt-0.5" id="connection-status">🟡 Connecting to MQTT...</p>
+                    <h1 class="text-sm md:text-xl font-bold text-emerald-400 tracking-wide">SCG CEMENT</h1>
+                    <p class="text-[9px] md:text-sm mt-0.5" id="connection-status">🟡 Connecting...</p>
                 </div>
-                <!-- ปุ่มเสียงย้ายมาตรงนี้สำหรับมือถือ -->
-                <button id="btn-audio" onclick="toggleAudio()" class="md:hidden px-2 py-1 bg-rose-600 text-white text-[10px] font-bold rounded border border-rose-400">🔇 เปิดเสียงเตือน</button>
+                <!-- ปุ่มเปิดเสียงมือถือ -->
+                <button id="btn-audio" onclick="toggleAudio()" class="md:hidden px-2 py-1 bg-rose-600 text-white text-[9px] font-bold rounded border border-rose-400 shadow">🔇 เปิดเสียง</button>
             </div>
             
             <!-- ตั้งค่า Alarm Limit -->
-            <div class="flex flex-row justify-between md:justify-start gap-2 bg-slate-800 p-2 rounded border border-slate-600">
-                <div class="flex flex-col items-center">
-                    <label class="text-[9px] md:text-xs font-bold text-amber-400">Max T (°C)</label>
-                    <input type="number" id="limit-temp" value="45" class="w-12 md:w-16 bg-slate-900 border border-slate-500 rounded px-1 py-0.5 text-xs text-center focus:outline-none focus:border-amber-400 mt-1">
+            <div class="flex justify-between md:justify-start gap-1 bg-slate-800 p-1.5 rounded border border-slate-600">
+                <div class="flex flex-col items-center w-1/3 md:w-auto">
+                    <label class="text-[8px] md:text-xs font-bold text-amber-400">Max T (°C)</label>
+                    <input type="number" id="limit-temp" value="45" class="w-full md:w-16 bg-slate-900 border border-slate-500 rounded px-1 py-0.5 text-[10px] md:text-xs text-center focus:outline-none focus:border-amber-400 mt-0.5">
                 </div>
-                <div class="flex flex-col items-center">
-                    <label class="text-[9px] md:text-xs font-bold text-blue-400">Max H (%)</label>
-                    <input type="number" id="limit-hum" value="85" class="w-12 md:w-16 bg-slate-900 border border-slate-500 rounded px-1 py-0.5 text-xs text-center focus:outline-none focus:border-blue-400 mt-1">
+                <div class="flex flex-col items-center w-1/3 md:w-auto">
+                    <label class="text-[8px] md:text-xs font-bold text-blue-400">Max H (%)</label>
+                    <input type="number" id="limit-hum" value="85" class="w-full md:w-16 bg-slate-900 border border-slate-500 rounded px-1 py-0.5 text-[10px] md:text-xs text-center focus:outline-none focus:border-blue-400 mt-0.5">
                 </div>
-                <div class="flex flex-col items-center">
-                    <label class="text-[9px] md:text-xs font-bold text-rose-400">Max N (dB)</label>
-                    <input type="number" id="limit-noise" value="85" class="w-12 md:w-16 bg-slate-900 border border-slate-500 rounded px-1 py-0.5 text-xs text-center focus:outline-none focus:border-rose-400 mt-1">
+                <div class="flex flex-col items-center w-1/3 md:w-auto">
+                    <label class="text-[8px] md:text-xs font-bold text-rose-400">Max N (dB)</label>
+                    <input type="number" id="limit-noise" value="85" class="w-full md:w-16 bg-slate-900 border border-slate-500 rounded px-1 py-0.5 text-[10px] md:text-xs text-center focus:outline-none focus:border-rose-400 mt-0.5">
                 </div>
             </div>
 
-            <!-- ปุ่มเปิด/ปิดเสียง สำหรับ Desktop -->
-            <button id="btn-audio-desktop" onclick="toggleAudio()" class="hidden md:flex px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white text-sm font-bold rounded shadow border border-rose-400 transition items-center gap-2">
-                🔇 ระบบเสียงปิดอยู่ (คลิกเพื่อเปิด)
+            <!-- ปุ่มเปิดเสียง Desktop -->
+            <button id="btn-audio-desktop" onclick="toggleAudio()" class="hidden md:flex px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold rounded border border-rose-400 items-center gap-1">
+                🔇 ระบบเสียงปิดอยู่
             </button>
         </div>
     </header>
 
-    <!-- 2. พื้นหลังแผนที่โรงงาน (เปิดระบบเลื่อนซ้ายขวาบนมือถือ) -->
-    <div class="w-full overflow-x-auto hide-scroll bg-slate-800 rounded-xl border border-slate-700 shadow-xl">
-        <!-- บังคับความกว้างขั้นต่ำ 650px ถ้าจอเล็กกว่านี้ให้เกิด Scroll แทนการบีบรูป -->
-        <div class="map-container min-w-[650px] w-full">
+    <!-- แจ้งเตือนการซูม -->
+    <div class="text-center text-[9px] md:text-xs text-slate-400 mb-1">
+        🔍 ใช้นิ้วถ่างเพื่อซูมดูแผนที่จุดต่างๆ (Pinch to Zoom)
+    </div>
+
+    <!-- 2. พื้นหลังแผนที่โรงงาน (บีบพอดีจอ w-full) -->
+    <div class="w-full bg-slate-800 rounded-lg border border-slate-700 shadow-xl overflow-hidden">
+        <div class="map-container">
             <img src="map-bg.jpg" alt="Plant Map" class="w-full h-auto block opacity-80" onerror="this.src='https://via.placeholder.com/1000x500/1e293b/475569?text=Factory+Map+Background'">
 
-            <!-- โครงสร้าง Badge แบบ Compact -->
+            <!-- โครงสร้าง Badge แบบ Ultra Compact (จิ๋วสุด) -->
             <!-- จุดที่ 1 -->
-            <div id="badge-1" class="sensor-badge bg-slate-900/95 border border-slate-500 rounded p-1 md:p-2 shadow-lg text-[9px] md:text-xs leading-tight" style="top: 75%; left: 27%;">
-                <div class="font-bold text-slate-200 border-b border-slate-700 pb-0.5 mb-0.5 text-center text-[10px] md:text-sm">CM-05</div>
-                <div class="whitespace-nowrap"><span class="text-amber-400 font-bold">T:</span> <span id="val-t1" class="font-mono text-slate-100">--</span> <span class="text-[7px] md:text-[10px] text-slate-400">°C</span></div>
-                <div class="whitespace-nowrap"><span class="text-blue-400 font-bold">H:</span> <span id="val-h1" class="font-mono text-slate-100">--</span> <span class="text-[7px] md:text-[10px] text-slate-400">%</span></div>
-                <div class="whitespace-nowrap"><span class="text-rose-400 font-bold">N:</span> <span id="val-n1" class="font-mono text-slate-100">--</span> <span class="text-[7px] md:text-[10px] text-slate-400">dB</span></div>
+            <div id="badge-1" class="sensor-badge bg-slate-900/90 border border-slate-500 rounded px-1 py-0.5 shadow-md text-[7px] md:text-[10px] leading-tight" style="top: 75%; left: 27%;">
+                <div class="font-bold text-emerald-400 border-b border-slate-600 pb-[1px] mb-[1px] text-center text-[7.5px] md:text-[11px]">จุดที่ 1</div>
+                <div class="whitespace-nowrap"><span class="text-amber-400">T:</span> <span id="val-t1" class="font-mono text-slate-100">--</span></div>
+                <div class="whitespace-nowrap"><span class="text-blue-400">H:</span> <span id="val-h1" class="font-mono text-slate-100">--</span></div>
+                <div class="whitespace-nowrap"><span class="text-rose-400">N:</span> <span id="val-n1" class="font-mono text-slate-100">--</span></div>
             </div>
 
             <!-- จุดที่ 2 -->
-            <div id="badge-2" class="sensor-badge bg-slate-900/95 border border-slate-500 rounded p-1 md:p-2 shadow-lg text-[9px] md:text-xs leading-tight" style="top: 57%; left: 38%;">
-                <div class="font-bold text-slate-200 border-b border-slate-700 pb-0.5 mb-0.5 text-center text-[10px] md:text-sm">CM-06</div>
-                <div class="whitespace-nowrap"><span class="text-amber-400 font-bold">T:</span> <span id="val-t2" class="font-mono text-slate-100">--</span> <span class="text-[7px] md:text-[10px] text-slate-400">°C</span></div>
-                <div class="whitespace-nowrap"><span class="text-blue-400 font-bold">H:</span> <span id="val-h2" class="font-mono text-slate-100">--</span> <span class="text-[7px] md:text-[10px] text-slate-400">%</span></div>
-                <div class="whitespace-nowrap"><span class="text-rose-400 font-bold">N:</span> <span id="val-n2" class="font-mono text-slate-100">--</span> <span class="text-[7px] md:text-[10px] text-slate-400">dB</span></div>
+            <div id="badge-2" class="sensor-badge bg-slate-900/90 border border-slate-500 rounded px-1 py-0.5 shadow-md text-[7px] md:text-[10px] leading-tight" style="top: 57%; left: 38%;">
+                <div class="font-bold text-emerald-400 border-b border-slate-600 pb-[1px] mb-[1px] text-center text-[7.5px] md:text-[11px]">จุดที่ 2</div>
+                <div class="whitespace-nowrap"><span class="text-amber-400">T:</span> <span id="val-t2" class="font-mono text-slate-100">--</span></div>
+                <div class="whitespace-nowrap"><span class="text-blue-400">H:</span> <span id="val-h2" class="font-mono text-slate-100">--</span></div>
+                <div class="whitespace-nowrap"><span class="text-rose-400">N:</span> <span id="val-n2" class="font-mono text-slate-100">--</span></div>
             </div>
 
             <!-- จุดที่ 3 -->
-            <div id="badge-3" class="sensor-badge bg-slate-900/95 border border-slate-500 rounded p-1 md:p-2 shadow-lg text-[9px] md:text-xs leading-tight" style="top: 44%; left: 52%;">
-                <div class="font-bold text-slate-200 border-b border-slate-700 pb-0.5 mb-0.5 text-center text-[10px] md:text-sm">CM-07</div>
-                <div class="whitespace-nowrap"><span class="text-amber-400 font-bold">T:</span> <span id="val-t3" class="font-mono text-slate-100">--</span> <span class="text-[7px] md:text-[10px] text-slate-400">°C</span></div>
-                <div class="whitespace-nowrap"><span class="text-blue-400 font-bold">H:</span> <span id="val-h3" class="font-mono text-slate-100">--</span> <span class="text-[7px] md:text-[10px] text-slate-400">%</span></div>
-                <div class="whitespace-nowrap"><span class="text-rose-400 font-bold">N:</span> <span id="val-n3" class="font-mono text-slate-100">--</span> <span class="text-[7px] md:text-[10px] text-slate-400">dB</span></div>
+            <div id="badge-3" class="sensor-badge bg-slate-900/90 border border-slate-500 rounded px-1 py-0.5 shadow-md text-[7px] md:text-[10px] leading-tight" style="top: 44%; left: 52%;">
+                <div class="font-bold text-emerald-400 border-b border-slate-600 pb-[1px] mb-[1px] text-center text-[7.5px] md:text-[11px]">จุดที่ 3</div>
+                <div class="whitespace-nowrap"><span class="text-amber-400">T:</span> <span id="val-t3" class="font-mono text-slate-100">--</span></div>
+                <div class="whitespace-nowrap"><span class="text-blue-400">H:</span> <span id="val-h3" class="font-mono text-slate-100">--</span></div>
+                <div class="whitespace-nowrap"><span class="text-rose-400">N:</span> <span id="val-n3" class="font-mono text-slate-100">--</span></div>
             </div>
 
             <!-- จุดที่ 4 -->
-            <div id="badge-4" class="sensor-badge bg-slate-900/95 border border-slate-500 rounded p-1 md:p-2 shadow-lg text-[9px] md:text-xs leading-tight" style="top: 19%; left: 63%;">
-                <div class="font-bold text-slate-200 border-b border-slate-700 pb-0.5 mb-0.5 text-center text-[10px] md:text-sm">CM-08</div>
-                <div class="whitespace-nowrap"><span class="text-amber-400 font-bold">T:</span> <span id="val-t4" class="font-mono text-slate-100">--</span> <span class="text-[7px] md:text-[10px] text-slate-400">°C</span></div>
-                <div class="whitespace-nowrap"><span class="text-blue-400 font-bold">H:</span> <span id="val-h4" class="font-mono text-slate-100">--</span> <span class="text-[7px] md:text-[10px] text-slate-400">%</span></div>
-                <div class="whitespace-nowrap"><span class="text-rose-400 font-bold">N:</span> <span id="val-n4" class="font-mono text-slate-100">--</span> <span class="text-[7px] md:text-[10px] text-slate-400">dB</span></div>
+            <div id="badge-4" class="sensor-badge bg-slate-900/90 border border-slate-500 rounded px-1 py-0.5 shadow-md text-[7px] md:text-[10px] leading-tight" style="top: 19%; left: 63%;">
+                <div class="font-bold text-emerald-400 border-b border-slate-600 pb-[1px] mb-[1px] text-center text-[7.5px] md:text-[11px]">จุดที่ 4</div>
+                <div class="whitespace-nowrap"><span class="text-amber-400">T:</span> <span id="val-t4" class="font-mono text-slate-100">--</span></div>
+                <div class="whitespace-nowrap"><span class="text-blue-400">H:</span> <span id="val-h4" class="font-mono text-slate-100">--</span></div>
+                <div class="whitespace-nowrap"><span class="text-rose-400">N:</span> <span id="val-n4" class="font-mono text-slate-100">--</span></div>
             </div>
 
             <!-- จุดที่ 5 -->
-            <div id="badge-5" class="sensor-badge bg-slate-900/95 border border-slate-500 rounded p-1 md:p-2 shadow-lg text-[9px] md:text-xs leading-tight" style="top: 10%; left: 78%;">
-                <div class="font-bold text-slate-200 border-b border-slate-700 pb-0.5 mb-0.5 text-center text-[10px] md:text-sm">CM-09</div>
-                <div class="whitespace-nowrap"><span class="text-amber-400 font-bold">T:</span> <span id="val-t5" class="font-mono text-slate-100">--</span> <span class="text-[7px] md:text-[10px] text-slate-400">°C</span></div>
-                <div class="whitespace-nowrap"><span class="text-blue-400 font-bold">H:</span> <span id="val-h5" class="font-mono text-slate-100">--</span> <span class="text-[7px] md:text-[10px] text-slate-400">%</span></div>
-                <div class="whitespace-nowrap"><span class="text-rose-400 font-bold">N:</span> <span id="val-n5" class="font-mono text-slate-100">--</span> <span class="text-[7px] md:text-[10px] text-slate-400">dB</span></div>
+            <div id="badge-5" class="sensor-badge bg-slate-900/90 border border-slate-500 rounded px-1 py-0.5 shadow-md text-[7px] md:text-[10px] leading-tight" style="top: 10%; left: 78%;">
+                <div class="font-bold text-emerald-400 border-b border-slate-600 pb-[1px] mb-[1px] text-center text-[7.5px] md:text-[11px]">จุดที่ 5</div>
+                <div class="whitespace-nowrap"><span class="text-amber-400">T:</span> <span id="val-t5" class="font-mono text-slate-100">--</span></div>
+                <div class="whitespace-nowrap"><span class="text-blue-400">H:</span> <span id="val-h5" class="font-mono text-slate-100">--</span></div>
+                <div class="whitespace-nowrap"><span class="text-rose-400">N:</span> <span id="val-n5" class="font-mono text-slate-100">--</span></div>
             </div>
         </div>
     </div>
 
-    <!-- แจ้งเตือนการปัดหน้าจอ -->
-    <div class="md:hidden mt-2 text-center text-[10px] text-amber-400/80">
-        👆 ใช้นิ้วปัดซ้าย-ขวาที่แผนที่เพื่อดูเซนเซอร์จุดอื่น
-    </div>
-
     <script>
         // ==========================================
-        // ระบบเสียงและ MQTT (ใช้โค้ดเดิม แค่แก้ปุ่มให้รองรับทั้งมือถือและคอม)
+        // ระบบเสียงและ MQTT
         // ==========================================
         let audioCtx;
         let isAudioEnabled = false;
@@ -145,20 +143,19 @@
                 
                 const onStyle = 'bg-emerald-600 text-white border-emerald-400';
                 btnMobile.innerHTML = '🔊 เสียงทำงาน';
-                btnMobile.className = `md:hidden px-2 py-1 text-[10px] font-bold rounded border ${onStyle}`;
-                btnDesktop.innerHTML = '🔊 ระบบเสียง: <b>พร้อมทำงาน</b>';
-                btnDesktop.className = `hidden md:flex px-4 py-2 text-sm font-bold rounded shadow border transition items-center gap-2 ${onStyle}`;
+                btnMobile.className = `md:hidden px-2 py-1 text-[9px] font-bold rounded border shadow ${onStyle}`;
+                btnDesktop.innerHTML = '🔊 เสียงทำงาน';
+                btnDesktop.className = `hidden md:flex px-3 py-1.5 text-xs font-bold rounded border items-center gap-1 ${onStyle}`;
             } else {
                 isAudioEnabled = false;
                 stopSiren();
                 
-                const offStyle = 'bg-slate-600 text-slate-300 border-slate-400';
-                const redStyle = 'bg-rose-600 text-white border-rose-400'; // กลับไปสีเตือนให้กด
+                const redStyle = 'bg-rose-600 text-white border-rose-400';
                 
-                btnMobile.innerHTML = '🔇 เปิดเสียงเตือน';
-                btnMobile.className = `md:hidden px-2 py-1 text-[10px] font-bold rounded border ${redStyle}`;
-                btnDesktop.innerHTML = '🔇 ระบบเสียงปิดอยู่ (คลิกเพื่อเปิด)';
-                btnDesktop.className = `hidden md:flex px-4 py-2 hover:bg-rose-500 text-sm font-bold rounded shadow border transition items-center gap-2 ${redStyle}`;
+                btnMobile.innerHTML = '🔇 เปิดเสียง';
+                btnMobile.className = `md:hidden px-2 py-1 text-[9px] font-bold rounded border shadow ${redStyle}`;
+                btnDesktop.innerHTML = '🔇 ระบบเสียงปิดอยู่';
+                btnDesktop.className = `hidden md:flex px-3 py-1.5 hover:bg-rose-500 text-xs font-bold rounded border items-center gap-1 ${redStyle}`;
             }
         }
 
@@ -205,14 +202,14 @@
         const statusEl = document.getElementById('connection-status');
 
         client.on('connect', () => {
-            statusEl.innerHTML = '🟢 <b>Status:</b> Connected (Live)';
-            statusEl.className = 'text-[10px] md:text-sm text-emerald-400 mt-0.5';
+            statusEl.innerHTML = '🟢 Connected';
+            statusEl.className = 'text-[9px] md:text-sm text-emerald-400 mt-0.5 font-bold';
             client.subscribe(topic);
         });
 
         client.on('error', (err) => {
-            statusEl.innerHTML = '🔴 <b>Status:</b> Error';
-            statusEl.className = 'text-[10px] md:text-sm text-red-400 mt-0.5';
+            statusEl.innerHTML = '🔴 Error';
+            statusEl.className = 'text-[9px] md:text-sm text-red-400 mt-0.5 font-bold';
         });
 
         client.on('message', (t, payload) => {
@@ -250,11 +247,11 @@
 
                         if (hasAlarm) {
                             badge.classList.add('alarm-active');
-                            badge.classList.remove('bg-slate-900/95', 'border-slate-500');
+                            badge.classList.remove('bg-slate-900/90', 'border-slate-500');
                             isAnyPointAlarming = true;
                         } else {
                             badge.classList.remove('alarm-active');
-                            badge.classList.add('bg-slate-900/95', 'border-slate-500');
+                            badge.classList.add('bg-slate-900/90', 'border-slate-500');
                         }
                     }
                     triggerAlarm(isAnyPointAlarming);
