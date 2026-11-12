@@ -6,44 +6,37 @@
     <title>SCG Cement - Environmental SCADA</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/4.3.7/mqtt.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- เพิ่มไลบรารี Chart.js สำหรับสร้างกราฟ -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        .map-container {
-            position: relative;
-            display: block;
-            width: 100%;
-        }
+        .map-container { position: relative; display: block; width: 100%; }
         
-        /* ใช้เทคนิค Scale ย่อทั้งการ์ดทะลุขีดจำกัดฟอนต์ของเบราว์เซอร์ */
         .sensor-badge {
             position: absolute;
-            transform: translate(-50%, -50%) scale(0.60); /* มือถือย่อเหลือ 60% */
+            transform: translate(-50%, -50%) scale(0.60);
             transform-origin: center center;
-            transition: all 0.3s ease;
+            transition: all 0.2s ease;
+            cursor: pointer; /* เปลี่ยนเมาส์เป็นรูปนิ้วตอนชี้ */
         }
         @media (min-width: 768px) {
-            .sensor-badge {
-                transform: translate(-50%, -50%) scale(0.85); /* คอมย่อเหลือ 85% */
-            }
+            .sensor-badge { transform: translate(-50%, -50%) scale(0.85); }
         }
+        /* เพิ่ม Effect เวลาเอานิ้วแตะการ์ดให้รู้ว่ากดได้ */
+        .sensor-badge:active { transform: translate(-50%, -50%) scale(0.55); filter: brightness(1.2); }
+        @media (min-width: 768px) { .sensor-badge:active { transform: translate(-50%, -50%) scale(0.80); } }
 
         @keyframes scada-blink {
             0% { background-color: rgba(127, 29, 29, 0.95); border-color: #ef4444; }
             50% { background-color: rgba(69, 10, 10, 0.9); border-color: #7f1d1d; }
             100% { background-color: rgba(127, 29, 29, 0.95); border-color: #ef4444; }
         }
-        .alarm-active {
-            animation: scada-blink 1s infinite;
-            color: #fca5a5;
-        }
-        .alarm-text {
-            color: #fca5a5 !important;
-            font-weight: bold;
-        }
+        .alarm-active { animation: scada-blink 1s infinite; color: #fca5a5; }
+        .alarm-text { color: #fca5a5 !important; font-weight: bold; }
     </style>
 </head>
 <body class="bg-slate-950 text-slate-200 font-sans min-h-screen flex flex-col p-1 md:p-4">
 
-    <!-- Header & Alarm Controls -->
+    <!-- Header & Alarm Controls (เหมือนเดิม) -->
     <header class="mb-2 bg-slate-900 border border-slate-700 rounded-lg p-2 shadow-lg">
         <div class="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-2">
             <div class="flex justify-between items-center">
@@ -76,7 +69,7 @@
     </header>
 
     <div class="text-center text-[9px] md:text-xs text-slate-400 mb-1">
-        🔍 ใช้นิ้วถ่างเพื่อซูมดูแผนที่จุดต่างๆ (Pinch to Zoom)
+        👆 แตะที่การ์ดเพื่อดูกราฟย้อนหลัง | 🔍 ใช้นิ้วถ่างเพื่อซูมแผนที่
     </div>
 
     <!-- พื้นหลังแผนที่โรงงาน -->
@@ -84,40 +77,36 @@
         <div class="map-container">
             <img src="map-bg.jpg" alt="Plant Map" class="w-full h-auto block opacity-80">
 
-            <!-- จุดที่ 1 -->
-            <div id="badge-1" class="sensor-badge bg-slate-900/90 border-2 border-slate-500 rounded p-1.5 shadow-md text-[10px] leading-tight" style="top: 75%; left: 27%;">
+            <!-- ใส่ onclick="openChartModal(1)" เพื่อเปิดกราฟของจุดนั้นๆ -->
+            <div id="badge-1" onclick="openChartModal(1)" class="sensor-badge bg-slate-900/90 border-2 border-slate-500 rounded p-1.5 shadow-md text-[10px] leading-tight hover:border-emerald-400" style="top: 75%; left: 27%;">
                 <div class="font-bold text-emerald-400 border-b border-slate-600 pb-0.5 mb-0.5 text-center text-[11px]">จุดที่ 1</div>
                 <div class="whitespace-nowrap"><span class="text-amber-400">T:</span> <span id="val-t1" class="font-mono text-slate-100">--</span></div>
                 <div class="whitespace-nowrap"><span class="text-blue-400">H:</span> <span id="val-h1" class="font-mono text-slate-100">--</span></div>
                 <div class="whitespace-nowrap"><span class="text-rose-400">N:</span> <span id="val-n1" class="font-mono text-slate-100">--</span></div>
             </div>
 
-            <!-- จุดที่ 2 -->
-            <div id="badge-2" class="sensor-badge bg-slate-900/90 border-2 border-slate-500 rounded p-1.5 shadow-md text-[10px] leading-tight" style="top: 57%; left: 38%;">
+            <div id="badge-2" onclick="openChartModal(2)" class="sensor-badge bg-slate-900/90 border-2 border-slate-500 rounded p-1.5 shadow-md text-[10px] leading-tight hover:border-emerald-400" style="top: 57%; left: 38%;">
                 <div class="font-bold text-emerald-400 border-b border-slate-600 pb-0.5 mb-0.5 text-center text-[11px]">จุดที่ 2</div>
                 <div class="whitespace-nowrap"><span class="text-amber-400">T:</span> <span id="val-t2" class="font-mono text-slate-100">--</span></div>
                 <div class="whitespace-nowrap"><span class="text-blue-400">H:</span> <span id="val-h2" class="font-mono text-slate-100">--</span></div>
                 <div class="whitespace-nowrap"><span class="text-rose-400">N:</span> <span id="val-n2" class="font-mono text-slate-100">--</span></div>
             </div>
 
-            <!-- จุดที่ 3 -->
-            <div id="badge-3" class="sensor-badge bg-slate-900/90 border-2 border-slate-500 rounded p-1.5 shadow-md text-[10px] leading-tight" style="top: 44%; left: 52%;">
+            <div id="badge-3" onclick="openChartModal(3)" class="sensor-badge bg-slate-900/90 border-2 border-slate-500 rounded p-1.5 shadow-md text-[10px] leading-tight hover:border-emerald-400" style="top: 44%; left: 52%;">
                 <div class="font-bold text-emerald-400 border-b border-slate-600 pb-0.5 mb-0.5 text-center text-[11px]">จุดที่ 3</div>
                 <div class="whitespace-nowrap"><span class="text-amber-400">T:</span> <span id="val-t3" class="font-mono text-slate-100">--</span></div>
                 <div class="whitespace-nowrap"><span class="text-blue-400">H:</span> <span id="val-h3" class="font-mono text-slate-100">--</span></div>
                 <div class="whitespace-nowrap"><span class="text-rose-400">N:</span> <span id="val-n3" class="font-mono text-slate-100">--</span></div>
             </div>
 
-            <!-- จุดที่ 4 -->
-            <div id="badge-4" class="sensor-badge bg-slate-900/90 border-2 border-slate-500 rounded p-1.5 shadow-md text-[10px] leading-tight" style="top: 19%; left: 63%;">
+            <div id="badge-4" onclick="openChartModal(4)" class="sensor-badge bg-slate-900/90 border-2 border-slate-500 rounded p-1.5 shadow-md text-[10px] leading-tight hover:border-emerald-400" style="top: 19%; left: 63%;">
                 <div class="font-bold text-emerald-400 border-b border-slate-600 pb-0.5 mb-0.5 text-center text-[11px]">จุดที่ 4</div>
                 <div class="whitespace-nowrap"><span class="text-amber-400">T:</span> <span id="val-t4" class="font-mono text-slate-100">--</span></div>
                 <div class="whitespace-nowrap"><span class="text-blue-400">H:</span> <span id="val-h4" class="font-mono text-slate-100">--</span></div>
                 <div class="whitespace-nowrap"><span class="text-rose-400">N:</span> <span id="val-n4" class="font-mono text-slate-100">--</span></div>
             </div>
 
-            <!-- จุดที่ 5 -->
-            <div id="badge-5" class="sensor-badge bg-slate-900/90 border-2 border-slate-500 rounded p-1.5 shadow-md text-[10px] leading-tight" style="top: 10%; left: 78%;">
+            <div id="badge-5" onclick="openChartModal(5)" class="sensor-badge bg-slate-900/90 border-2 border-slate-500 rounded p-1.5 shadow-md text-[10px] leading-tight hover:border-emerald-400" style="top: 10%; left: 78%;">
                 <div class="font-bold text-emerald-400 border-b border-slate-600 pb-0.5 mb-0.5 text-center text-[11px]">จุดที่ 5</div>
                 <div class="whitespace-nowrap"><span class="text-amber-400">T:</span> <span id="val-t5" class="font-mono text-slate-100">--</span></div>
                 <div class="whitespace-nowrap"><span class="text-blue-400">H:</span> <span id="val-h5" class="font-mono text-slate-100">--</span></div>
@@ -126,92 +115,197 @@
         </div>
     </div>
 
+    <!-- 3. โครงสร้าง Modal สำหรับแสดงกราฟ (ซ่อนไว้เป็นค่าเริ่มต้น) -->
+    <div id="chart-modal" class="fixed inset-0 bg-black/80 z-50 hidden flex-col justify-center items-center p-2 md:p-6">
+        <div class="bg-slate-900 border border-slate-600 rounded-xl w-full max-w-4xl p-3 md:p-5 shadow-2xl flex flex-col">
+            <!-- Header Modal -->
+            <div class="flex justify-between items-center mb-3 border-b border-slate-700 pb-2">
+                <h2 id="chart-title" class="text-base md:text-xl font-bold text-emerald-400">Trend History - จุดที่ X</h2>
+                <button onclick="closeChartModal()" class="text-rose-400 hover:text-rose-300 font-bold text-xl px-2">&times;</button>
+            </div>
+            
+            <!-- Tools: เลือกเวลา -->
+            <div class="flex justify-between items-center mb-3">
+                <span id="loading-text" class="text-amber-400 text-xs md:text-sm animate-pulse hidden">⏳ กำลังโหลดข้อมูลจากเซิร์ฟเวอร์...</span>
+                <select id="time-range" onchange="renderChart()" class="bg-slate-800 text-slate-200 border border-slate-600 rounded px-2 py-1 text-xs md:text-sm focus:outline-none focus:border-emerald-500 ml-auto">
+                    <option value="1">1 ชั่วโมงล่าสุด</option>
+                    <option value="6">6 ชั่วโมงล่าสุด</option>
+                    <option value="12">12 ชั่วโมงล่าสุด</option>
+                    <option value="24" selected>24 ชั่วโมงล่าสุด</option>
+                </select>
+            </div>
+
+            <!-- พื้นที่แสดงกราฟ -->
+            <div class="relative w-full h-[250px] md:h-[400px] bg-slate-950 rounded border border-slate-800 p-1">
+                <canvas id="historyChart"></canvas>
+            </div>
+        </div>
+    </div>
+
     <script>
         // ==========================================
-        // ระบบเสียงและ MQTT (คงเดิม)
+        // 1. ระบบ Chart และ Google Sheets API
         // ==========================================
-        let audioCtx;
-        let isAudioEnabled = false;
-        let alarmInterval = null;
+        // 🔴🔴 เปลี่ยน URL ด้านล่างนี้เป็น Web App URL ของคุณ 🔴🔴
+        const script_url = "https://script.google.com/macros/s/AKfycbx_q_ZFWH1iMhb_UZTEq2Ga-XUyj6P1u_Dw6bchAdSkv_M_OWR_oP9TDRfW_v7Phtei/exec";
+        
+        let chartInstance = null;
+        let fetchedData = []; // เก็บ Cache ข้อมูลเพื่อจะได้ไม่ต้องโหลดใหม่เวลาย้าย Time Range
+        let currentActiveNode = 1;
+
+        async function openChartModal(nodeId) {
+            currentActiveNode = nodeId;
+            document.getElementById('chart-title').innerText = `Trend History - จุดที่ ${nodeId}`;
+            document.getElementById('chart-modal').classList.remove('hidden');
+            document.getElementById('chart-modal').classList.add('flex');
+            
+            // ถ้ามีข้อมูล Cache อยู่แล้ว ให้วาดกราฟเลยไม่ต้องโหลดใหม่
+            if(fetchedData.length > 0) {
+                renderChart();
+            } else {
+                fetchHistoryData();
+            }
+        }
+
+        function closeChartModal() {
+            document.getElementById('chart-modal').classList.add('hidden');
+            document.getElementById('chart-modal').classList.remove('flex');
+        }
+
+        async function fetchHistoryData() {
+            document.getElementById('loading-text').classList.remove('hidden');
+            try {
+                // ดึงข้อมูลจาก Google Apps Script
+                const response = await fetch(script_url);
+                const data = await response.json();
+                
+                if(data.error || data.length === 0) {
+                    alert("ยังไม่มีข้อมูลบันทึกในระบบ");
+                } else {
+                    fetchedData = data;
+                    renderChart();
+                }
+            } catch (err) {
+                console.error("Fetch Error:", err);
+                alert("ไม่สามารถดึงข้อมูลได้ โปรดตรวจสอบ URL หรืออินเทอร์เน็ต");
+            }
+            document.getElementById('loading-text').classList.add('hidden');
+        }
+
+        function renderChart() {
+            if(!fetchedData || fetchedData.length === 0) return;
+
+            const hours = parseInt(document.getElementById('time-range').value);
+            const now = new Date();
+            
+            // กรองข้อมูลตามชั่วโมงที่เลือก
+            const filteredData = fetchedData.filter(row => {
+                const rowTime = new Date(row.time);
+                const diffMs = now - rowTime;
+                return diffMs <= (hours * 60 * 60 * 1000);
+            });
+
+            // เตรียมข้อมูล 3 เส้น
+            const labels = [];
+            const dataT = [];
+            const dataH = [];
+            const dataN = [];
+
+            filteredData.forEach(row => {
+                const d = new Date(row.time);
+                // ตัดให้แสดงแค่ เวลา (HH:MM)
+                labels.push(d.getHours().toString().padStart(2, '0') + ':' + d.getMinutes().toString().padStart(2, '0'));
+                
+                // ดึงค่าตาม Node ที่เลือก เช่น t1, h1, n1
+                let valT = row['t' + currentActiveNode];
+                let valH = row['h' + currentActiveNode];
+                let valN = row['n' + currentActiveNode];
+
+                // ตัดค่าขยะ (-99) ออกจากกราฟ
+                dataT.push(valT === -99 ? null : valT);
+                dataH.push(valH === -99 ? null : valH);
+                dataN.push(valN === -99 ? null : valN);
+            });
+
+            // ทำลายกราฟเก่าก่อนวาดใหม่
+            if (chartInstance) chartInstance.destroy();
+
+            const ctx = document.getElementById('historyChart').getContext('2d');
+            
+            // วาดกราฟ
+            chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        { label: 'อุณหภูมิ (°C)', data: dataT, borderColor: '#fbbf24', backgroundColor: 'rgba(251,191,36,0.1)', yAxisID: 'y', tension: 0.3, pointRadius: 1 },
+                        { label: 'ความชื้น (%)', data: dataH, borderColor: '#60a5fa', backgroundColor: 'rgba(96,165,250,0.1)', yAxisID: 'y', tension: 0.3, pointRadius: 1 },
+                        { label: 'เสียง (dB)', data: dataN, borderColor: '#fb7185', backgroundColor: 'rgba(251,113,133,0.1)', yAxisID: 'y1', tension: 0.3, pointRadius: 1 }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: { legend: { labels: { color: '#cbd5e1', font: { size: 10 } } } },
+                    scales: {
+                        x: { ticks: { color: '#94a3b8', maxTicksLimit: 12 }, grid: { color: '#334155' } },
+                        // แกน Y ซ้าย: อุณหภูมิและความชื้น (ตั้ง 0-100)
+                        y: { type: 'linear', display: true, position: 'left', min: 0, max: 100, ticks: { color: '#cbd5e1' }, grid: { color: '#334155' }, title: { display: true, text: '°C / %', color: '#cbd5e1' } },
+                        // แกน Y ขวา: เสียงรบกวน (ตั้งอิสระ)
+                        y1: { type: 'linear', display: true, position: 'right', min: 30, max: 120, ticks: { color: '#fb7185' }, grid: { drawOnChartArea: false }, title: { display: true, text: 'dB', color: '#fb7185' } }
+                    }
+                }
+            });
+        }
+
+
+        // ==========================================
+        // 2. ระบบ MQTT และเสียงเตือน (เหมือนเดิม)
+        // ==========================================
+        let audioCtx, isAudioEnabled = false, alarmInterval = null;
 
         function toggleAudio() {
             const btnMobile = document.getElementById('btn-audio');
             const btnDesktop = document.getElementById('btn-audio-desktop');
-            
             if (!isAudioEnabled) {
                 if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
                 if (audioCtx.state === 'suspended') audioCtx.resume();
                 isAudioEnabled = true;
-                
                 const onStyle = 'bg-emerald-600 text-white border-emerald-400';
-                btnMobile.innerHTML = '🔊 เสียงทำงาน';
-                btnMobile.className = `md:hidden px-2 py-1 text-[9px] font-bold rounded border shadow ${onStyle}`;
-                btnDesktop.innerHTML = '🔊 เสียงทำงาน';
-                btnDesktop.className = `hidden md:flex px-3 py-1.5 text-xs font-bold rounded border items-center gap-1 ${onStyle}`;
+                btnMobile.innerHTML = '🔊 เสียงทำงาน'; btnMobile.className = `md:hidden px-2 py-1 text-[9px] font-bold rounded border shadow ${onStyle}`;
+                btnDesktop.innerHTML = '🔊 เสียงทำงาน'; btnDesktop.className = `hidden md:flex px-3 py-1.5 text-xs font-bold rounded border items-center gap-1 ${onStyle}`;
             } else {
-                isAudioEnabled = false;
-                stopSiren();
-                
+                isAudioEnabled = false; stopSiren();
                 const redStyle = 'bg-rose-600 text-white border-rose-400';
-                btnMobile.innerHTML = '🔇 เปิดเสียง';
-                btnMobile.className = `md:hidden px-2 py-1 text-[9px] font-bold rounded border shadow ${redStyle}`;
-                btnDesktop.innerHTML = '🔇 ระบบเสียงปิดอยู่';
-                btnDesktop.className = `hidden md:flex px-3 py-1.5 hover:bg-rose-500 text-xs font-bold rounded border items-center gap-1 ${redStyle}`;
+                btnMobile.innerHTML = '🔇 เปิดเสียง'; btnMobile.className = `md:hidden px-2 py-1 text-[9px] font-bold rounded border shadow ${redStyle}`;
+                btnDesktop.innerHTML = '🔇 ระบบเสียงปิดอยู่'; btnDesktop.className = `hidden md:flex px-3 py-1.5 hover:bg-rose-500 text-xs font-bold rounded border items-center gap-1 ${redStyle}`;
             }
         }
 
         function playSirenSound() {
             if (!isAudioEnabled || !audioCtx) return;
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
+            const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
             osc.type = 'square';
-            osc.frequency.setValueAtTime(800, audioCtx.currentTime); 
-            osc.frequency.setValueAtTime(1000, audioCtx.currentTime + 0.25);
-            gain.gain.setValueAtTime(0.1, audioCtx.currentTime); 
-            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.start();
-            osc.stop(audioCtx.currentTime + 0.5);
+            osc.frequency.setValueAtTime(800, audioCtx.currentTime); osc.frequency.setValueAtTime(1000, audioCtx.currentTime + 0.25);
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+            osc.connect(gain); gain.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime + 0.5);
         }
 
         function triggerAlarm(shouldAlarm) {
-            if (shouldAlarm) {
-                if (!alarmInterval) alarmInterval = setInterval(playSirenSound, 600);
-            } else {
-                stopSiren();
-            }
+            if (shouldAlarm) { if (!alarmInterval) alarmInterval = setInterval(playSirenSound, 600); } 
+            else { stopSiren(); }
         }
-
-        function stopSiren() {
-            if (alarmInterval) {
-                clearInterval(alarmInterval);
-                alarmInterval = null;
-            }
-        }
+        function stopSiren() { if (alarmInterval) { clearInterval(alarmInterval); alarmInterval = null; } }
 
         const brokerUrl = 'wss://da20fee687434cce93e355ebceb7da00.s2.eu.hivemq.cloud:8884/mqtt';
         const topic = 'scg/cement/environment_monitoring';
-        const options = {
-            clientId: 'scada_web_' + Math.random().toString(16).substring(2, 8),
-            username: 'esp32_sensorMonitor', 
-            password: 'Mcl195088', 
-            clean: true
-        };
-
+        const options = { clientId: 'scada_web_' + Math.random().toString(16).substring(2, 8), username: 'esp32_sensorMonitor', password: 'Mcl195088', clean: true };
         const client = mqtt.connect(brokerUrl, options);
         const statusEl = document.getElementById('connection-status');
 
-        client.on('connect', () => {
-            statusEl.innerHTML = '🟢 Connected';
-            statusEl.className = 'text-[9px] md:text-sm text-emerald-400 mt-0.5 font-bold';
-            client.subscribe(topic);
-        });
-
-        client.on('error', (err) => {
-            statusEl.innerHTML = '🔴 Error';
-            statusEl.className = 'text-[9px] md:text-sm text-red-400 mt-0.5 font-bold';
-        });
+        client.on('connect', () => { statusEl.innerHTML = '🟢 Connected'; statusEl.className = 'text-[9px] md:text-sm text-emerald-400 mt-0.5 font-bold'; client.subscribe(topic); });
+        client.on('error', () => { statusEl.innerHTML = '🔴 Error'; statusEl.className = 'text-[9px] md:text-sm text-red-400 mt-0.5 font-bold'; });
 
         client.on('message', (t, payload) => {
             if (t === topic) {
@@ -223,37 +317,15 @@
                     let isAnyPointAlarming = false;
                     
                     for(let i = 1; i <= 5; i++) {
-                        let hasAlarm = false;
-                        let badge = document.getElementById('badge-'+i);
+                        let hasAlarm = false; let badge = document.getElementById('badge-'+i);
                         let valT = data['t'+i], valH = data['h'+i], valN = data['n'+i];
 
-                        if (valT !== undefined && valT !== -99) {
-                            let el = document.getElementById('val-t'+i);
-                            el.textContent = valT.toFixed(1);
-                            if(valT > limitT) { hasAlarm = true; el.classList.add('alarm-text'); } 
-                            else el.classList.remove('alarm-text');
-                        }
-                        if (valH !== undefined && valH !== -99) {
-                            let el = document.getElementById('val-h'+i);
-                            el.textContent = valH.toFixed(1);
-                            if(valH > limitH) { hasAlarm = true; el.classList.add('alarm-text'); }
-                            else el.classList.remove('alarm-text');
-                        }
-                        if (valN !== undefined && valN !== -99) {
-                            let el = document.getElementById('val-n'+i);
-                            el.textContent = valN.toFixed(1);
-                            if(valN > limitN) { hasAlarm = true; el.classList.add('alarm-text'); }
-                            else el.classList.remove('alarm-text');
-                        }
+                        if (valT !== undefined && valT !== -99) { let el = document.getElementById('val-t'+i); el.textContent = valT.toFixed(1); if(valT > limitT) { hasAlarm = true; el.classList.add('alarm-text'); } else el.classList.remove('alarm-text'); }
+                        if (valH !== undefined && valH !== -99) { let el = document.getElementById('val-h'+i); el.textContent = valH.toFixed(1); if(valH > limitH) { hasAlarm = true; el.classList.add('alarm-text'); } else el.classList.remove('alarm-text'); }
+                        if (valN !== undefined && valN !== -99) { let el = document.getElementById('val-n'+i); el.textContent = valN.toFixed(1); if(valN > limitN) { hasAlarm = true; el.classList.add('alarm-text'); } else el.classList.remove('alarm-text'); }
 
-                        if (hasAlarm) {
-                            badge.classList.add('alarm-active');
-                            badge.classList.remove('bg-slate-900/90', 'border-slate-500');
-                            isAnyPointAlarming = true;
-                        } else {
-                            badge.classList.remove('alarm-active');
-                            badge.classList.add('bg-slate-900/90', 'border-slate-500');
-                        }
+                        if (hasAlarm) { badge.classList.add('alarm-active'); badge.classList.remove('bg-slate-900/90', 'border-slate-500'); isAnyPointAlarming = true; } 
+                        else { badge.classList.remove('alarm-active'); badge.classList.add('bg-slate-900/90', 'border-slate-500'); }
                     }
                     triggerAlarm(isAnyPointAlarming);
                 } catch (e) { console.error('Parse JSON error:', e); }
