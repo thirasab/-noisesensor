@@ -294,10 +294,11 @@
         }
 
 
-        // ==========================================
+       // ==========================================
         // ระบบ MQTT และเสียงเตือน
         // ==========================================
         let audioCtx, isAudioEnabled = false, alarmInterval = null;
+        let dataTimeout = null; // ตัวแปรสำหรับเช็คข้อมูลค้าง
 
         function toggleAudio() {
             const btnMobile = document.getElementById('btn-audio');
@@ -332,18 +333,61 @@
         }
         function stopSiren() { if (alarmInterval) { clearInterval(alarmInterval); alarmInterval = null; } }
 
+        // ฟังก์ชันสำหรับเคลียร์ค่าบนหน้าจอเมื่อข้อมูลค้าง
+        function clearStaleData() {
+            const statusEl = document.getElementById('connection-status');
+            statusEl.innerHTML = '🟠 Stale Data (No Update)'; 
+            statusEl.className = 'text-[9px] md:text-sm text-amber-400 mt-0.5 font-bold animate-pulse';
+            
+            for(let i = 1; i <= 5; i++) {
+                let badge = document.getElementById('badge-'+i);
+                document.getElementById('val-t'+i).textContent = '--';
+                document.getElementById('val-h'+i).textContent = '--';
+                document.getElementById('val-n'+i).textContent = '--';
+                
+                // ล้างสไตล์แจ้งเตือนทั้งหมด
+                document.getElementById('val-t'+i).classList.remove('alarm-text');
+                document.getElementById('val-h'+i).classList.remove('alarm-text');
+                document.getElementById('val-n'+i).classList.remove('alarm-text');
+                badge.classList.remove('alarm-active');
+                badge.classList.add('bg-slate-900/90', 'border-slate-500');
+            }
+            stopSiren(); // ปิดเสียงเตือนหากเซนเซอร์หายไป
+        }
+
         const brokerUrl = 'wss://da20fee687434cce93e355ebceb7da00.s2.eu.hivemq.cloud:8884/mqtt';
         const topic = 'scg/cement/environment_monitoring';
         const options = { clientId: 'scada_web_' + Math.random().toString(16).substring(2, 8), username: 'esp32_sensorMonitor', password: 'Mcl195088', clean: true };
         const client = mqtt.connect(brokerUrl, options);
         const statusEl = document.getElementById('connection-status');
 
-        client.on('connect', () => { statusEl.innerHTML = '🟢 Connected'; statusEl.className = 'text-[9px] md:text-sm text-emerald-400 mt-0.5 font-bold'; client.subscribe(topic); });
-        client.on('error', () => { statusEl.innerHTML = '🔴 Error'; statusEl.className = 'text-[9px] md:text-sm text-red-400 mt-0.5 font-bold'; });
+        client.on('connect', () => { 
+            statusEl.innerHTML = '🟢 Connected'; 
+            statusEl.className = 'text-[9px] md:text-sm text-emerald-400 mt-0.5 font-bold'; 
+            client.subscribe(topic); 
+        });
+        
+        client.on('error', () => { 
+            statusEl.innerHTML = '🔴 Error'; 
+            statusEl.className = 'text-[9px] md:text-sm text-red-400 mt-0.5 font-bold'; 
+            clearStaleData(); // เคลียร์ข้อมูลทันทีที่มี Error
+        });
 
         client.on('message', (t, payload) => {
             if (t === topic) {
                 try {
+                    // ล้าง Timeout เดิมทุกครั้งที่ได้รับข้อความใหม่
+                    if (dataTimeout) {
+                        clearTimeout(dataTimeout);
+                    }
+                    
+                    // ตั้ง Timeout ใหม่ 15 วินาที
+                    dataTimeout = setTimeout(clearStaleData, 15000);
+
+                    // อัปเดตสถานะกลับเป็นปกติเมื่อได้รับข้อมูล
+                    statusEl.innerHTML = '🟢 Connected (Live)'; 
+                    statusEl.className = 'text-[9px] md:text-sm text-emerald-400 mt-0.5 font-bold';
+
                     const data = JSON.parse(payload.toString());
                     const limitT = parseFloat(document.getElementById('limit-temp').value) || 999;
                     const limitH = parseFloat(document.getElementById('limit-hum').value) || 999;
@@ -354,9 +398,36 @@
                         let hasAlarm = false; let badge = document.getElementById('badge-'+i);
                         let valT = data['t'+i], valH = data['h'+i], valN = data['n'+i];
 
-                        if (valT !== undefined && valT !== -99) { let el = document.getElementById('val-t'+i); el.textContent = valT.toFixed(1); if(valT > limitT) { hasAlarm = true; el.classList.add('alarm-text'); } else el.classList.remove('alarm-text'); }
-                        if (valH !== undefined && valH !== -99) { let el = document.getElementById('val-h'+i); el.textContent = valH.toFixed(1); if(valH > limitH) { hasAlarm = true; el.classList.add('alarm-text'); } else el.classList.remove('alarm-text'); }
-                        if (valN !== undefined && valN !== -99) { let el = document.getElementById('val-n'+i); el.textContent = valN.toFixed(1); if(valN > limitN) { hasAlarm = true; el.classList.add('alarm-text'); } else el.classList.remove('alarm-text'); }
+                        // ถ้าค่าไหนไม่มีส่งมา (undefined) หรือเท่ากับ -99 ให้แสดง --
+                        let elT = document.getElementById('val-t'+i);
+                        if (valT !== undefined && valT !== -99) { 
+                            elT.textContent = valT.toFixed(1); 
+                            if(valT > limitT) { hasAlarm = true; elT.classList.add('alarm-text'); } 
+                            else elT.classList.remove('alarm-text'); 
+                        } else {
+                            elT.textContent = '--';
+                            elT.classList.remove('alarm-text');
+                        }
+
+                        let elH = document.getElementById('val-h'+i);
+                        if (valH !== undefined && valH !== -99) { 
+                            elH.textContent = valH.toFixed(1); 
+                            if(valH > limitH) { hasAlarm = true; elH.classList.add('alarm-text'); } 
+                            else elH.classList.remove('alarm-text'); 
+                        } else {
+                            elH.textContent = '--';
+                            elH.classList.remove('alarm-text');
+                        }
+                        
+                        let elN = document.getElementById('val-n'+i);
+                        if (valN !== undefined && valN !== -99) { 
+                            elN.textContent = valN.toFixed(1); 
+                            if(valN > limitN) { hasAlarm = true; elN.classList.add('alarm-text'); } 
+                            else elN.classList.remove('alarm-text'); 
+                        } else {
+                            elN.textContent = '--';
+                            elN.classList.remove('alarm-text');
+                        }
 
                         if (hasAlarm) { badge.classList.add('alarm-active'); badge.classList.remove('bg-slate-900/90', 'border-slate-500'); isAnyPointAlarming = true; } 
                         else { badge.classList.remove('alarm-active'); badge.classList.add('bg-slate-900/90', 'border-slate-500'); }
