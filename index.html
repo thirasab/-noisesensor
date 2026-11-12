@@ -3,8 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SCG Cement Plant - Environmental Monitoring</title>
+    <title>SCG Cement - Environmental SCADA</title>
+    <!-- โหลด MQTT Library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/4.3.7/mqtt.min.js"></script>
+    <!-- โหลด Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .map-container {
@@ -17,66 +19,179 @@
             position: absolute;
             transform: translate(-50%, -50%);
             white-space: nowrap;
+            transition: all 0.3s ease;
+        }
+        /* อนิเมชั่นกะพริบฉุกเฉิน */
+        @keyframes scada-blink {
+            0% { background-color: rgba(127, 29, 29, 0.95); border-color: #ef4444; box-shadow: 0 0 15px rgba(239, 68, 68, 0.8); }
+            50% { background-color: rgba(69, 10, 10, 0.9); border-color: #7f1d1d; box-shadow: 0 0 5px rgba(239, 68, 68, 0.2); }
+            100% { background-color: rgba(127, 29, 29, 0.95); border-color: #ef4444; box-shadow: 0 0 15px rgba(239, 68, 68, 0.8); }
+        }
+        .alarm-active {
+            animation: scada-blink 1s infinite;
+            color: #fca5a5;
+        }
+        .alarm-text {
+            color: #f87171 !important;
+            font-weight: bold;
         }
     </style>
 </head>
-<body class="bg-slate-900 text-white font-sans min-h-screen flex flex-col items-center p-2 md:p-4">
+<body class="bg-slate-950 text-slate-200 font-sans min-h-screen flex flex-col p-2 md:p-4">
 
-    <header class="mb-2 md:mb-4 text-center">
-        <h1 class="text-lg md:text-2xl font-bold text-emerald-400">SCG Cement - IoT Monitoring</h1>
-        <p class="text-xs md:text-sm text-slate-400" id="connection-status">Connecting to HiveMQ Cloud...</p>
+    <!-- Header & Alarm Controls -->
+    <header class="mb-4 bg-slate-900 border border-slate-700 rounded-xl p-4 shadow-lg">
+        <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+            <div>
+                <h1 class="text-xl md:text-2xl font-bold text-emerald-400 tracking-wide">SCG CEMENT <span class="text-slate-400 text-sm md:text-base font-normal">| Smart CM Environment Monitoring</span></h1>
+                <p class="text-sm mt-1" id="connection-status">🟡 Connecting to MQTT Broker...</p>
+            </div>
+            
+            <!-- ตั้งค่า Alarm Limit -->
+            <div class="flex flex-wrap gap-3 bg-slate-800 p-3 rounded-lg border border-slate-600">
+                <div class="flex items-center gap-2">
+                    <label class="text-xs font-bold text-amber-400">Max Temp (°C):</label>
+                    <input type="number" id="limit-temp" value="45" class="w-16 bg-slate-900 border border-slate-500 rounded px-1 py-0.5 text-sm text-center focus:outline-none focus:border-amber-400">
+                </div>
+                <div class="flex items-center gap-2">
+                    <label class="text-xs font-bold text-blue-400">Max Hum (%):</label>
+                    <input type="number" id="limit-hum" value="85" class="w-16 bg-slate-900 border border-slate-500 rounded px-1 py-0.5 text-sm text-center focus:outline-none focus:border-blue-400">
+                </div>
+                <div class="flex items-center gap-2">
+                    <label class="text-xs font-bold text-rose-400">Max Noise (dB):</label>
+                    <input type="number" id="limit-noise" value="85" class="w-16 bg-slate-900 border border-slate-500 rounded px-1 py-0.5 text-sm text-center focus:outline-none focus:border-rose-400">
+                </div>
+            </div>
+
+            <!-- ปุ่มเปิด/ปิดเสียง -->
+            <button id="btn-audio" onclick="toggleAudio()" class="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white text-sm font-bold rounded shadow border border-rose-400 transition flex items-center gap-2">
+                🔇 ระบบเสียงปิดอยู่ (คลิกเพื่อเปิด)
+            </button>
+        </div>
     </header>
 
-    <div class="map-container shadow-2xl rounded-xl overflow-hidden border border-slate-700">
-        <img src="map-bg.jpg" alt="Plant Map" class="w-full h-auto block">
+    <!-- พื้นหลังแผนที่โรงงาน -->
+    <div class="flex justify-center w-full">
+        <div class="map-container shadow-2xl rounded-xl overflow-hidden border border-slate-700 bg-slate-800">
+            <img src="map-bg.jpg" alt="Plant Map" class="w-full h-auto block opacity-80" onerror="this.src='https://via.placeholder.com/1000x500/1e293b/475569?text=Factory+Map+Background'">
 
-        <!-- จุดที่ 1 -->
-        <div class="sensor-badge bg-slate-900/90 border border-emerald-500 rounded px-1.5 py-1 md:p-2 shadow-lg text-[10px] md:text-xs" style="top: 75%; left: 27%;">
-            <div class="font-bold text-emerald-300 hidden md:block border-b border-slate-700 pb-0.5 mb-0.5">📍 จุดที่ 1 (CM)</div>
-            <div>🌡️ <span id="val-t1">--</span>°C</div>
-            <div>💧 <span id="val-h1">--</span>%</div>
-            <div>📢 <span id="val-n1">--</span> dB</div>
-        </div>
+            <!-- จุดที่ 1 -->
+            <div id="badge-1" class="sensor-badge bg-slate-900/90 border border-slate-500 rounded px-2 py-1 md:p-2 shadow-lg text-[10px] md:text-xs" style="top: 75%; left: 27%;">
+                <div class="font-bold text-slate-300 border-b border-slate-700 pb-0.5 mb-0.5">CM-05 (ENV)</div>
+                <div>🌡️ <span id="val-t1" class="font-mono">--</span> °C</div>
+                <div>💧 <span id="val-h1" class="font-mono">--</span> %</div>
+                <div>📢 <span id="val-n1" class="font-mono">--</span> dB</div>
+            </div>
 
-        <!-- จุดที่ 2 -->
-        <div class="sensor-badge bg-slate-900/90 border border-blue-500 rounded px-1.5 py-1 md:p-2 shadow-lg text-[10px] md:text-xs" style="top: 57%; left: 38%;">
-            <div class="font-bold text-blue-300 hidden md:block border-b border-slate-700 pb-0.5 mb-0.5">📍 จุดที่ 2 (CM)</div>
-            <div>🌡️ <span id="val-t2">--</span>°C</div>
-            <div>💧 <span id="val-h2">--</span>%</div>
-            <div>📢 <span id="val-n2">--</span> dB</div>
-        </div>
+            <!-- จุดที่ 2 -->
+            <div id="badge-2" class="sensor-badge bg-slate-900/90 border border-slate-500 rounded px-2 py-1 md:p-2 shadow-lg text-[10px] md:text-xs" style="top: 57%; left: 38%;">
+                <div class="font-bold text-slate-300 border-b border-slate-700 pb-0.5 mb-0.5">CM-06 (ENV)</div>
+                <div>🌡️ <span id="val-t2" class="font-mono">--</span> °C</div>
+                <div>💧 <span id="val-h2" class="font-mono">--</span> %</div>
+                <div>📢 <span id="val-n2" class="font-mono">--</span> dB</div>
+            </div>
 
-        <!-- จุดที่ 3 -->
-        <div class="sensor-badge bg-slate-900/90 border border-amber-500 rounded px-1.5 py-1 md:p-2 shadow-lg text-[10px] md:text-xs" style="top: 44%; left: 52%;">
-            <div class="font-bold text-amber-300 hidden md:block border-b border-slate-700 pb-0.5 mb-0.5">📍 จุดที่ 3 (CM)</div>
-            <div>🌡️ <span id="val-t3">--</span>°C</div>
-            <div>💧 <span id="val-h3">--</span>%</div>
-            <div>📢 <span id="val-n3">--</span> dB</div>
-        </div>
+            <!-- จุดที่ 3 -->
+            <div id="badge-3" class="sensor-badge bg-slate-900/90 border border-slate-500 rounded px-2 py-1 md:p-2 shadow-lg text-[10px] md:text-xs" style="top: 44%; left: 52%;">
+                <div class="font-bold text-slate-300 border-b border-slate-700 pb-0.5 mb-0.5">CM-07 (ENV)</div>
+                <div>🌡️ <span id="val-t3" class="font-mono">--</span> °C</div>
+                <div>💧 <span id="val-h3" class="font-mono">--</span> %</div>
+                <div>📢 <span id="val-n3" class="font-mono">--</span> dB</div>
+            </div>
 
-        <!-- จุดที่ 4 -->
-        <div class="sensor-badge bg-slate-900/90 border border-purple-500 rounded px-1.5 py-1 md:p-2 shadow-lg text-[10px] md:text-xs" style="top: 19%; left: 63%;">
-            <div class="font-bold text-purple-300 hidden md:block border-b border-slate-700 pb-0.5 mb-0.5">📍 จุดที่ 4 (CM)</div>
-            <div>🌡️ <span id="val-t4">--</span>°C</div>
-            <div>💧 <span id="val-h4">--</span>%</div>
-            <div>📢 <span id="val-n4">--</span> dB</div>
-        </div>
+            <!-- จุดที่ 4 -->
+            <div id="badge-4" class="sensor-badge bg-slate-900/90 border border-slate-500 rounded px-2 py-1 md:p-2 shadow-lg text-[10px] md:text-xs" style="top: 19%; left: 63%;">
+                <div class="font-bold text-slate-300 border-b border-slate-700 pb-0.5 mb-0.5">CM-08 (ENV)</div>
+                <div>🌡️ <span id="val-t4" class="font-mono">--</span> °C</div>
+                <div>💧 <span id="val-h4" class="font-mono">--</span> %</div>
+                <div>📢 <span id="val-n4" class="font-mono">--</span> dB</div>
+            </div>
 
-        <!-- จุดที่ 5 -->
-        <div class="sensor-badge bg-slate-900/90 border border-rose-500 rounded px-1.5 py-1 md:p-2 shadow-lg text-[10px] md:text-xs" style="top: 10%; left: 78%;">
-            <div class="font-bold text-rose-300 hidden md:block border-b border-slate-700 pb-0.5 mb-0.5">📍 จุดที่ 5 (CM)</div>
-            <div>🌡️ <span id="val-t5">--</span>°C</div>
-            <div>💧 <span id="val-h5">--</span>%</div>
-            <div>📢 <span id="val-n5">--</span> dB</div>
+            <!-- จุดที่ 5 -->
+            <div id="badge-5" class="sensor-badge bg-slate-900/90 border border-slate-500 rounded px-2 py-1 md:p-2 shadow-lg text-[10px] md:text-xs" style="top: 10%; left: 78%;">
+                <div class="font-bold text-slate-300 border-b border-slate-700 pb-0.5 mb-0.5">CM-09 (ENV)</div>
+                <div>🌡️ <span id="val-t5" class="font-mono">--</span> °C</div>
+                <div>💧 <span id="val-h5" class="font-mono">--</span> %</div>
+                <div>📢 <span id="val-n5" class="font-mono">--</span> dB</div>
+            </div>
         </div>
     </div>
 
     <script>
+        // ==========================================
+        // 1. ระบบจัดการเสียง (Web Audio API สังเคราะห์เสียงไซเรน)
+        // ==========================================
+        let audioCtx;
+        let isAudioEnabled = false;
+        let alarmInterval = null;
+
+        function toggleAudio() {
+            const btn = document.getElementById('btn-audio');
+            if (!isAudioEnabled) {
+                // เปิดเสียง
+                if(!audioCtx) {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+                isAudioEnabled = true;
+                btn.innerHTML = '🔊 ระบบเสียง: <b>พร้อมทำงาน</b>';
+                btn.className = 'px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold rounded shadow border border-emerald-400 transition flex items-center gap-2';
+            } else {
+                // ปิดเสียงชั่วคราว
+                isAudioEnabled = false;
+                stopSiren();
+                btn.innerHTML = '🔇 ระบบเสียงปิดอยู่ (คลิกเพื่อเปิด)';
+                btn.className = 'px-4 py-2 bg-slate-600 hover:bg-slate-500 text-slate-300 text-sm font-bold rounded shadow border border-slate-400 transition flex items-center gap-2';
+            }
+        }
+
+        // ฟังก์ชันสร้างเสียงไซเรนตีคู่ (Industrial Buzzer)
+        function playSirenSound() {
+            if (!isAudioEnabled || !audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            
+            osc.type = 'square';
+            // สลับความถี่สูง-ต่ำ สร้างความรู้สึกฉุกเฉิน
+            osc.frequency.setValueAtTime(800, audioCtx.currentTime); 
+            osc.frequency.setValueAtTime(1000, audioCtx.currentTime + 0.25);
+            
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime); // ลดระดับเสียงไม่ให้หนวกหูเกินไป (0.1 = 10%)
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+            
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.5);
+        }
+
+        function triggerAlarm(shouldAlarm) {
+            if (shouldAlarm) {
+                if (!alarmInterval) {
+                    alarmInterval = setInterval(playSirenSound, 600); // เล่นเสียงทุกๆ 0.6 วินาที
+                }
+            } else {
+                stopSiren();
+            }
+        }
+
+        function stopSiren() {
+            if (alarmInterval) {
+                clearInterval(alarmInterval);
+                alarmInterval = null;
+            }
+        }
+
+        // ==========================================
+        // 2. ระบบ MQTT และจัดการข้อมูล
+        // ==========================================
         const brokerUrl = 'wss://da20fee687434cce93e355ebceb7da00.s2.eu.hivemq.cloud:8884/mqtt';
         const topic = 'scg/cement/environment_monitoring';
 
         const options = {
-            clientId: 'web_client_' + Math.random().toString(16).substring(2, 8),
+            clientId: 'scada_web_' + Math.random().toString(16).substring(2, 8),
             username: 'esp32_sensorMonitor', 
             password: 'Mcl195088', 
             clean: true
@@ -86,14 +201,14 @@
         const statusEl = document.getElementById('connection-status');
 
         client.on('connect', () => {
-            statusEl.textContent = 'Status: Connected';
-            statusEl.className = 'text-xs md:text-sm text-emerald-400';
+            statusEl.innerHTML = '🟢 <b>Status:</b> Connected to HiveMQ (Live)';
+            statusEl.className = 'text-xs md:text-sm text-emerald-400 mt-1';
             client.subscribe(topic);
         });
 
         client.on('error', (err) => {
-            statusEl.textContent = 'Error: ' + err;
-            statusEl.className = 'text-xs md:text-sm text-red-400';
+            statusEl.innerHTML = '🔴 <b>Status:</b> Connection Error';
+            statusEl.className = 'text-xs md:text-sm text-red-400 mt-1';
         });
 
         client.on('message', (t, payload) => {
@@ -101,12 +216,55 @@
                 try {
                     const data = JSON.parse(payload.toString());
                     
-                    // อัพเดตค่าทั้ง 5 จุด
+                    // ดึงค่า Limit จาก Input ปัจจุบัน
+                    const limitT = parseFloat(document.getElementById('limit-temp').value) || 999;
+                    const limitH = parseFloat(document.getElementById('limit-hum').value) || 999;
+                    const limitN = parseFloat(document.getElementById('limit-noise').value) || 999;
+
+                    let isAnyPointAlarming = false;
+                    
+                    // อัพเดตค่าและเช็ค Limit ทั้ง 5 จุด
                     for(let i = 1; i <= 5; i++) {
-                        if (data['t'+i] !== undefined) document.getElementById('val-t'+i).textContent = data['t'+i].toFixed(1);
-                        if (data['h'+i] !== undefined) document.getElementById('val-h'+i).textContent = data['h'+i].toFixed(1);
-                        if (data['n'+i] !== undefined) document.getElementById('val-n'+i).textContent = data['n'+i].toFixed(1);
+                        let hasAlarm = false;
+                        let badge = document.getElementById('badge-'+i);
+                        let valT = data['t'+i];
+                        let valH = data['h'+i];
+                        let valN = data['n'+i];
+
+                        // แสดงผลและเช็คค่าว่าเกิน Limit หรือไม่
+                        if (valT !== undefined && valT !== -99) {
+                            let el = document.getElementById('val-t'+i);
+                            el.textContent = valT.toFixed(1);
+                            if(valT > limitT) { hasAlarm = true; el.classList.add('alarm-text'); } 
+                            else { el.classList.remove('alarm-text'); }
+                        }
+                        if (valH !== undefined && valH !== -99) {
+                            let el = document.getElementById('val-h'+i);
+                            el.textContent = valH.toFixed(1);
+                            if(valH > limitH) { hasAlarm = true; el.classList.add('alarm-text'); }
+                            else { el.classList.remove('alarm-text'); }
+                        }
+                        if (valN !== undefined && valN !== -99) {
+                            let el = document.getElementById('val-n'+i);
+                            el.textContent = valN.toFixed(1);
+                            if(valN > limitN) { hasAlarm = true; el.classList.add('alarm-text'); }
+                            else { el.classList.remove('alarm-text'); }
+                        }
+
+                        // เปลี่ยน CSS ของป้ายหากเกิด Alarm
+                        if (hasAlarm) {
+                            badge.classList.add('alarm-active');
+                            badge.classList.remove('bg-slate-900/90', 'border-slate-500');
+                            isAnyPointAlarming = true;
+                        } else {
+                            badge.classList.remove('alarm-active');
+                            badge.classList.add('bg-slate-900/90', 'border-slate-500');
+                        }
                     }
+
+                    // สั่งเป่าไซเรนหากมีจุดใดจุดหนึ่ง Alarm
+                    triggerAlarm(isAnyPointAlarming);
+
                 } catch (e) {
                     console.error('Parse JSON error:', e);
                 }
