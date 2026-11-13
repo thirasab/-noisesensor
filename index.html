@@ -374,7 +374,7 @@
         });
 
         client.on('message', (t, payload) => {
-            if (t === topic) {
+        if (t.includes('scg/cement/environment_monitoring')) {
                 try {
                     // ล้าง Timeout เดิมทุกครั้งที่ได้รับข้อความใหม่
                     if (dataTimeout) {
