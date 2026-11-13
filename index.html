@@ -356,7 +356,7 @@
         }
 
         const brokerUrl = 'wss://da20fee687434cce93e355ebceb7da00.s2.eu.hivemq.cloud:8884/mqtt';
-        const topic = 'scg/cement/environment_monitoring';
+        const topic = 'scg/cement/environment_monitoring/#';
         const options = { clientId: 'scada_web_' + Math.random().toString(16).substring(2, 8), username: 'esp32_sensorMonitor', password: 'Mcl195088', clean: true };
         const client = mqtt.connect(brokerUrl, options);
         const statusEl = document.getElementById('connection-status');
