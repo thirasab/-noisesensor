@@ -52,18 +52,11 @@
                 <button id="btn-audio" onclick="toggleAudio()" class="md:hidden px-2 py-1 bg-rose-600 text-white text-[9px] font-bold rounded border border-rose-400 shadow">🔇 เปิดเสียง</button>
             </div>
             
-            <div class="flex justify-between md:justify-start gap-1 bg-slate-800 p-1.5 rounded border border-slate-600">
-                <div class="flex flex-col items-center w-1/3 md:w-auto">
-                    <label class="text-[8px] md:text-xs font-bold text-amber-400">Max T (°C)</label>
-                    <input type="number" id="limit-temp" value="45" class="w-full md:w-16 bg-slate-900 border border-slate-500 rounded px-1 py-0.5 text-[10px] md:text-xs text-center focus:outline-none focus:border-amber-400 mt-0.5">
-                </div>
-                <div class="flex flex-col items-center w-1/3 md:w-auto">
-                    <label class="text-[8px] md:text-xs font-bold text-blue-400">Max H (%)</label>
-                    <input type="number" id="limit-hum" value="85" class="w-full md:w-16 bg-slate-900 border border-slate-500 rounded px-1 py-0.5 text-[10px] md:text-xs text-center focus:outline-none focus:border-blue-400 mt-0.5">
-                </div>
-                <div class="flex flex-col items-center w-1/3 md:w-auto">
-                    <label class="text-[8px] md:text-xs font-bold text-rose-400">Max N (dB)</label>
-                    <input type="number" id="limit-noise" value="85" class="w-full md:w-16 bg-slate-900 border border-slate-500 rounded px-1 py-0.5 text-[10px] md:text-xs text-center focus:outline-none focus:border-rose-400 mt-0.5">
+            <!-- ตั้งค่า Alarm เฉพาะ Noise -->
+            <div class="flex justify-center md:justify-start bg-slate-800 p-1.5 rounded border border-slate-600">
+                <div class="flex flex-row md:flex-col items-center justify-center gap-2 md:gap-0 w-full md:w-auto px-2">
+                    <label class="text-[10px] md:text-xs font-bold text-rose-400">Alarm Max N (dB)</label>
+                    <input type="number" id="limit-noise" value="85" class="w-20 bg-slate-900 border border-slate-500 rounded px-1 py-0.5 text-xs text-center focus:outline-none focus:border-rose-400 md:mt-0.5">
                 </div>
             </div>
 
@@ -167,8 +160,8 @@
         
         function zoomMap(step) {
             currentMapZoom += step;
-            if (currentMapZoom < 100) currentMapZoom = 100; // ล็อคไม่ให้เล็กกว่าจอ (สัดส่วนเริ่มต้นคงเดิม)
-            if (currentMapZoom > 400) currentMapZoom = 400; // ล็อคซูมสูงสุด 400%
+            if (currentMapZoom < 100) currentMapZoom = 100;
+            if (currentMapZoom > 400) currentMapZoom = 400;
             document.getElementById('map-container').style.width = currentMapZoom + '%';
         }
         
@@ -177,7 +170,6 @@
             document.getElementById('map-container').style.width = '100%';
         }
 
-        // ระบบคลิกลากเพื่อเลื่อน (Drag to Pan)
         const slider = document.getElementById('map-scroll-wrapper');
         let isDown = false;
         let startX, startY, scrollLeft, scrollTop;
@@ -197,8 +189,8 @@
             e.preventDefault();
             const x = e.pageX - slider.offsetLeft;
             const y = e.pageY - slider.offsetTop;
-            const walkX = (x - startX) * 1.5; // ความเร็วในการเลื่อนซ้ายขวา
-            const walkY = (y - startY) * 1.5; // ความเร็วในการเลื่อนขึ้นลง
+            const walkX = (x - startX) * 1.5;
+            const walkY = (y - startY) * 1.5;
             slider.scrollLeft = scrollLeft - walkX;
             slider.scrollTop = scrollTop - walkY;
         });
@@ -206,7 +198,6 @@
         // ==========================================
         // ระบบ Chart และ Google Sheets API
         // ==========================================
-        // 🔴🔴 เปลี่ยน URL ด้านล่างนี้เป็น Web App URL ของคุณ 🔴🔴
         const script_url = "https://script.google.com/macros/s/AKfycbx_q_ZFWH1iMhb_UZTEq2Ga-XUyj6P1u_Dw6bchAdSkv_M_OWR_oP9TDRfW_v7Phtei/exec";
         
         let chartInstance = null;
@@ -293,12 +284,11 @@
             });
         }
 
-
-       // ==========================================
-        // ระบบ MQTT และเสียงเตือน
+        // ==========================================
+        // ระบบ MQTT และเสียงเตือน (เฉพาะ Noise)
         // ==========================================
         let audioCtx, isAudioEnabled = false, alarmInterval = null;
-        let dataTimeout = null; // ตัวแปรสำหรับเช็คข้อมูลค้าง
+        let dataTimeout = null;
 
         function toggleAudio() {
             const btnMobile = document.getElementById('btn-audio');
@@ -333,7 +323,6 @@
         }
         function stopSiren() { if (alarmInterval) { clearInterval(alarmInterval); alarmInterval = null; } }
 
-        // ฟังก์ชันสำหรับเคลียร์ค่าบนหน้าจอเมื่อข้อมูลค้าง
         function clearStaleData() {
             const statusEl = document.getElementById('connection-status');
             statusEl.innerHTML = '🟠 Stale Data (No Update)'; 
@@ -345,14 +334,11 @@
                 document.getElementById('val-h'+i).textContent = '--';
                 document.getElementById('val-n'+i).textContent = '--';
                 
-                // ล้างสไตล์แจ้งเตือนทั้งหมด
-                document.getElementById('val-t'+i).classList.remove('alarm-text');
-                document.getElementById('val-h'+i).classList.remove('alarm-text');
                 document.getElementById('val-n'+i).classList.remove('alarm-text');
                 badge.classList.remove('alarm-active');
                 badge.classList.add('bg-slate-900/90', 'border-slate-500');
             }
-            stopSiren(); // ปิดเสียงเตือนหากเซนเซอร์หายไป
+            stopSiren();
         }
 
         const brokerUrl = 'wss://da20fee687434cce93e355ebceb7da00.s2.eu.hivemq.cloud:8884/mqtt';
@@ -370,67 +356,59 @@
         client.on('error', () => { 
             statusEl.innerHTML = '🔴 Error'; 
             statusEl.className = 'text-[9px] md:text-sm text-red-400 mt-0.5 font-bold'; 
-            clearStaleData(); // เคลียร์ข้อมูลทันทีที่มี Error
+            clearStaleData();
         });
 
         client.on('message', (t, payload) => {
-        if (t.includes('scg/cement/environment_monitoring')) {
+            if (t.includes('scg/cement/environment_monitoring')) {
                 try {
-                    // ล้าง Timeout เดิมทุกครั้งที่ได้รับข้อความใหม่
                     if (dataTimeout) {
                         clearTimeout(dataTimeout);
                     }
-                    
-                    // ตั้ง Timeout ใหม่ 15 วินาที
                     dataTimeout = setTimeout(clearStaleData, 15000);
 
-                    // อัปเดตสถานะกลับเป็นปกติเมื่อได้รับข้อมูล
                     statusEl.innerHTML = '🟢 Connected (Live)'; 
                     statusEl.className = 'text-[9px] md:text-sm text-emerald-400 mt-0.5 font-bold';
 
                     const data = JSON.parse(payload.toString());
-                    const limitT = parseFloat(document.getElementById('limit-temp').value) || 999;
-                    const limitH = parseFloat(document.getElementById('limit-hum').value) || 999;
                     const limitN = parseFloat(document.getElementById('limit-noise').value) || 999;
                     let isAnyPointAlarming = false;
                     
                     for(let i = 1; i <= 5; i++) {
-                        let hasAlarm = false; let badge = document.getElementById('badge-'+i);
+                        let hasAlarm = false; 
+                        let badge = document.getElementById('badge-'+i);
                         let valT = data['t'+i], valH = data['h'+i], valN = data['n'+i];
 
-                        // ถ้าค่าไหนไม่มีส่งมา (undefined) หรือเท่ากับ -99 ให้แสดง --
+                        // แสดงผล T และ H ตามปกติ (ไม่มีระบบ Alarm)
                         let elT = document.getElementById('val-t'+i);
-                        if (valT !== undefined && valT !== -99) { 
-                            elT.textContent = valT.toFixed(1); 
-                            if(valT > limitT) { hasAlarm = true; elT.classList.add('alarm-text'); } 
-                            else elT.classList.remove('alarm-text'); 
-                        } else {
-                            elT.textContent = '--';
-                            elT.classList.remove('alarm-text');
-                        }
+                        elT.textContent = (valT !== undefined && valT !== -99) ? valT.toFixed(1) : '--';
 
                         let elH = document.getElementById('val-h'+i);
-                        if (valH !== undefined && valH !== -99) { 
-                            elH.textContent = valH.toFixed(1); 
-                            if(valH > limitH) { hasAlarm = true; elH.classList.add('alarm-text'); } 
-                            else elH.classList.remove('alarm-text'); 
-                        } else {
-                            elH.textContent = '--';
-                            elH.classList.remove('alarm-text');
-                        }
+                        elH.textContent = (valH !== undefined && valH !== -99) ? valH.toFixed(1) : '--';
                         
+                        // เช็คเงื่อนไข Alarm เฉพาะค่าเสียง (Noise)
                         let elN = document.getElementById('val-n'+i);
                         if (valN !== undefined && valN !== -99) { 
                             elN.textContent = valN.toFixed(1); 
-                            if(valN > limitN) { hasAlarm = true; elN.classList.add('alarm-text'); } 
-                            else elN.classList.remove('alarm-text'); 
+                            if(valN > limitN) { 
+                                hasAlarm = true; 
+                                elN.classList.add('alarm-text'); 
+                            } else {
+                                elN.classList.remove('alarm-text'); 
+                            }
                         } else {
                             elN.textContent = '--';
                             elN.classList.remove('alarm-text');
                         }
 
-                        if (hasAlarm) { badge.classList.add('alarm-active'); badge.classList.remove('bg-slate-900/90', 'border-slate-500'); isAnyPointAlarming = true; } 
-                        else { badge.classList.remove('alarm-active'); badge.classList.add('bg-slate-900/90', 'border-slate-500'); }
+                        if (hasAlarm) { 
+                            badge.classList.add('alarm-active'); 
+                            badge.classList.remove('bg-slate-900/90', 'border-slate-500'); 
+                            isAnyPointAlarming = true; 
+                        } else { 
+                            badge.classList.remove('alarm-active'); 
+                            badge.classList.add('bg-slate-900/90', 'border-slate-500'); 
+                        }
                     }
                     triggerAlarm(isAnyPointAlarming);
                 } catch (e) { console.error('Parse JSON error:', e); }
