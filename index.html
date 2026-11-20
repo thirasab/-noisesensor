@@ -16,25 +16,26 @@
 
         .map-container { position: relative; display: block; width: 100%; transition: width 0.3s ease-out; }
 
+        /* ===== Badge: ขนาดเท่าเดิม ===== */
         .sensor-badge {
             position: absolute;
-            transform: translate(-50%, -50%) scale(0.65);
+            transform: translate(-50%, -50%) scale(0.60);
             transform-origin: center center;
             transition: transform 0.15s ease, border-color 0.2s ease, background-color 0.2s ease;
             cursor: pointer;
-            min-width: 92px;
             user-select: none;
         }
         @media (min-width: 768px) {
             .sensor-badge { transform: translate(-50%, -50%) scale(0.85); }
         }
-        .sensor-badge:active { transform: translate(-50%, -50%) scale(0.6); filter: brightness(1.15); }
-        @media (min-width: 768px) { .sensor-badge:active { transform: translate(-50%, -50%) scale(0.8); } }
+        .sensor-badge:active { transform: translate(-50%, -50%) scale(0.55); filter: brightness(1.2); }
+        @media (min-width: 768px) { .sensor-badge:active { transform: translate(-50%, -50%) scale(0.80); } }
         .sensor-badge:focus-visible {
             outline: 2px solid #34d399;
             outline-offset: 2px;
         }
 
+        /* ===== Alarm states ===== */
         @keyframes scada-warn-pulse {
             0%, 100% { border-color: #f59e0b; }
             50% { border-color: #d97706; }
@@ -47,7 +48,6 @@
         .badge-warning { animation: scada-warn-pulse 1.5s infinite; }
         .badge-critical { animation: scada-crit-blink 0.8s infinite; color: #fca5a5; }
 
-        /* Acknowledged states — steady, no animation */
         .badge-warning-ack { border-color: #f59e0b !important; }
         .badge-critical-ack {
             border-color: #ef4444 !important;
@@ -58,19 +58,31 @@
         .alarm-text { color: #fca5a5 !important; font-weight: bold; }
         .warn-text { color: #fbbf24 !important; font-weight: bold; }
 
+        /* ปุ่ม ack มุมขวาบน — absolute ไม่ดันขนาดการ์ด */
         .ack-btn {
             position: absolute;
-            top: -8px; right: -8px;
-            width: 20px; height: 20px;
+            top: -6px; right: -6px;
+            width: 16px; height: 16px;
             border-radius: 50%;
             display: flex; align-items: center; justify-content: center;
-            font-size: 11px; font-weight: bold;
+            font-size: 9px; font-weight: bold;
             cursor: pointer;
             border: 1px solid rgba(255,255,255,0.4);
             z-index: 2;
+            line-height: 1;
         }
         .ack-btn.warn { background: #f59e0b; color: #1c1917; }
         .ack-btn.crit { background: #ef4444; color: white; }
+
+        /* Timestamp เล็กลง ไม่เพิ่มความสูงการ์ด */
+        .badge-ts {
+            font-size: 7px;
+            line-height: 1;
+            color: #64748b;
+            text-align: center;
+            margin-top: 1px;
+            font-family: ui-monospace, monospace;
+        }
 
         .toast { animation: toastIn 0.3s ease-out; }
         @keyframes toastIn {
@@ -103,7 +115,6 @@
                 </button>
             </div>
 
-            <!-- Alarm thresholds -->
             <div class="flex justify-center md:justify-start bg-slate-800 p-1.5 rounded border border-slate-600">
                 <div class="flex flex-row items-center justify-center gap-3 w-full md:w-auto px-2">
                     <div class="flex flex-col items-center">
@@ -133,10 +144,9 @@
     </header>
 
     <div class="text-center text-[9px] md:text-xs text-slate-400 mb-1">
-        👆 แตะการ์ดเพื่อดูกราฟ | 💻 ปุ่มซูม/ลากเมาส์ | ⚠️ Warning | 🚨 Critical | ✕ กดเพื่อรับทราบ alarm
+        👆 แตะการ์ดเพื่อดูกราฟ | 💻 ปุ่มซูม/ลากเมาส์ | ⚠️ Warning | 🚨 Critical | ✕ กดเพื่อรับทราบ
     </div>
 
-    <!-- Toast container -->
     <div id="toast-container" class="fixed top-4 right-4 z-[60] flex flex-col gap-2 pointer-events-none"></div>
 
     <!-- Map -->
@@ -156,12 +166,12 @@
                     aria-label="จุดที่ 1 - ดูกราฟย้อนหลัง"
                     class="sensor-badge bg-slate-900/90 border-2 border-slate-500 rounded p-1.5 shadow-md text-[10px] leading-tight hover:border-emerald-400"
                     style="top: 75%; left: 27%;">
-                    <div class="ack-btn warn hidden" onclick="event.stopPropagation(); app.acknowledge(1)" title="รับทราบ alarm">✕</div>
+                    <div class="ack-btn warn hidden" onclick="event.stopPropagation(); app.acknowledge(1)" title="รับทราบ">✕</div>
                     <div class="font-bold text-emerald-400 border-b border-slate-600 pb-0.5 mb-0.5 text-center text-[11px]">จุดที่ 1</div>
                     <div class="whitespace-nowrap"><span class="text-amber-400">T:</span> <span id="val-t1" class="font-mono text-slate-100">--</span></div>
                     <div class="whitespace-nowrap"><span class="text-blue-400">H:</span> <span id="val-h1" class="font-mono text-slate-100">--</span></div>
                     <div class="whitespace-nowrap"><span class="text-rose-400">N:</span> <span id="val-n1" class="font-mono text-slate-100">--</span></div>
-                    <div class="text-[8px] text-slate-500 text-center mt-0.5 font-mono"><span id="ts-1">--:--:--</span></div>
+                    <div class="badge-ts"><span id="ts-1">--:--:--</span></div>
                 </div>
 
                 <!-- จุดที่ 2 -->
@@ -169,12 +179,12 @@
                     aria-label="จุดที่ 2 - ดูกราฟย้อนหลัง"
                     class="sensor-badge bg-slate-900/90 border-2 border-slate-500 rounded p-1.5 shadow-md text-[10px] leading-tight hover:border-emerald-400"
                     style="top: 57%; left: 38%;">
-                    <div class="ack-btn warn hidden" onclick="event.stopPropagation(); app.acknowledge(2)" title="รับทราบ alarm">✕</div>
+                    <div class="ack-btn warn hidden" onclick="event.stopPropagation(); app.acknowledge(2)" title="รับทราบ">✕</div>
                     <div class="font-bold text-emerald-400 border-b border-slate-600 pb-0.5 mb-0.5 text-center text-[11px]">จุดที่ 2</div>
                     <div class="whitespace-nowrap"><span class="text-amber-400">T:</span> <span id="val-t2" class="font-mono text-slate-100">--</span></div>
                     <div class="whitespace-nowrap"><span class="text-blue-400">H:</span> <span id="val-h2" class="font-mono text-slate-100">--</span></div>
                     <div class="whitespace-nowrap"><span class="text-rose-400">N:</span> <span id="val-n2" class="font-mono text-slate-100">--</span></div>
-                    <div class="text-[8px] text-slate-500 text-center mt-0.5 font-mono"><span id="ts-2">--:--:--</span></div>
+                    <div class="badge-ts"><span id="ts-2">--:--:--</span></div>
                 </div>
 
                 <!-- จุดที่ 3 -->
@@ -182,12 +192,12 @@
                     aria-label="จุดที่ 3 - ดูกราฟย้อนหลัง"
                     class="sensor-badge bg-slate-900/90 border-2 border-slate-500 rounded p-1.5 shadow-md text-[10px] leading-tight hover:border-emerald-400"
                     style="top: 44%; left: 52%;">
-                    <div class="ack-btn warn hidden" onclick="event.stopPropagation(); app.acknowledge(3)" title="รับทราบ alarm">✕</div>
+                    <div class="ack-btn warn hidden" onclick="event.stopPropagation(); app.acknowledge(3)" title="รับทราบ">✕</div>
                     <div class="font-bold text-emerald-400 border-b border-slate-600 pb-0.5 mb-0.5 text-center text-[11px]">จุดที่ 3</div>
                     <div class="whitespace-nowrap"><span class="text-amber-400">T:</span> <span id="val-t3" class="font-mono text-slate-100">--</span></div>
                     <div class="whitespace-nowrap"><span class="text-blue-400">H:</span> <span id="val-h3" class="font-mono text-slate-100">--</span></div>
                     <div class="whitespace-nowrap"><span class="text-rose-400">N:</span> <span id="val-n3" class="font-mono text-slate-100">--</span></div>
-                    <div class="text-[8px] text-slate-500 text-center mt-0.5 font-mono"><span id="ts-3">--:--:--</span></div>
+                    <div class="badge-ts"><span id="ts-3">--:--:--</span></div>
                 </div>
 
                 <!-- จุดที่ 4 -->
@@ -195,12 +205,12 @@
                     aria-label="จุดที่ 4 - ดูกราฟย้อนหลัง"
                     class="sensor-badge bg-slate-900/90 border-2 border-slate-500 rounded p-1.5 shadow-md text-[10px] leading-tight hover:border-emerald-400"
                     style="top: 19%; left: 63%;">
-                    <div class="ack-btn warn hidden" onclick="event.stopPropagation(); app.acknowledge(4)" title="รับทราบ alarm">✕</div>
+                    <div class="ack-btn warn hidden" onclick="event.stopPropagation(); app.acknowledge(4)" title="รับทราบ">✕</div>
                     <div class="font-bold text-emerald-400 border-b border-slate-600 pb-0.5 mb-0.5 text-center text-[11px]">จุดที่ 4</div>
                     <div class="whitespace-nowrap"><span class="text-amber-400">T:</span> <span id="val-t4" class="font-mono text-slate-100">--</span></div>
                     <div class="whitespace-nowrap"><span class="text-blue-400">H:</span> <span id="val-h4" class="font-mono text-slate-100">--</span></div>
                     <div class="whitespace-nowrap"><span class="text-rose-400">N:</span> <span id="val-n4" class="font-mono text-slate-100">--</span></div>
-                    <div class="text-[8px] text-slate-500 text-center mt-0.5 font-mono"><span id="ts-4">--:--:--</span></div>
+                    <div class="badge-ts"><span id="ts-4">--:--:--</span></div>
                 </div>
 
                 <!-- จุดที่ 5 -->
@@ -208,12 +218,12 @@
                     aria-label="จุดที่ 5 - ดูกราฟย้อนหลัง"
                     class="sensor-badge bg-slate-900/90 border-2 border-slate-500 rounded p-1.5 shadow-md text-[10px] leading-tight hover:border-emerald-400"
                     style="top: 10%; left: 78%;">
-                    <div class="ack-btn warn hidden" onclick="event.stopPropagation(); app.acknowledge(5)" title="รับทราบ alarm">✕</div>
+                    <div class="ack-btn warn hidden" onclick="event.stopPropagation(); app.acknowledge(5)" title="รับทราบ">✕</div>
                     <div class="font-bold text-emerald-400 border-b border-slate-600 pb-0.5 mb-0.5 text-center text-[11px]">จุดที่ 5</div>
                     <div class="whitespace-nowrap"><span class="text-amber-400">T:</span> <span id="val-t5" class="font-mono text-slate-100">--</span></div>
                     <div class="whitespace-nowrap"><span class="text-blue-400">H:</span> <span id="val-h5" class="font-mono text-slate-100">--</span></div>
                     <div class="whitespace-nowrap"><span class="text-rose-400">N:</span> <span id="val-n5" class="font-mono text-slate-100">--</span></div>
-                    <div class="text-[8px] text-slate-500 text-center mt-0.5 font-mono"><span id="ts-5">--:--:--</span></div>
+                    <div class="badge-ts"><span id="ts-5">--:--:--</span></div>
                 </div>
             </div>
         </div>
@@ -228,7 +238,7 @@
             </div>
 
             <div class="flex justify-between items-center mb-3 gap-2">
-                <span id="loading-text" class="text-amber-400 text-xs md:text-sm animate-pulse hidden">⏳ กำลังโหลดข้อมูล...</span>
+                <span id="loading-text" class="text-amber-400 text-xs md:text-sm animate-pulse hidden">⏳ กำลังโหลด...</span>
                 <div class="flex gap-2 ml-auto">
                     <button onclick="app.refreshChart()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-600 rounded px-2 py-1 text-xs md:text-sm">🔄</button>
                     <select id="time-range" onchange="app.renderChart()"
@@ -248,12 +258,6 @@
     </div>
 
     <script>
-    /**
-     * SCG Environmental SCADA — Refactored
-     *
-     * ⚠️ SECURITY NOTE: MQTT credentials below are visible in client source.
-     *    For production, move to backend proxy or use token-based auth + ACL.
-     */
     class ScadaApp {
         constructor() {
             this.config = {
@@ -284,19 +288,15 @@
                 activeNode: 1,
                 pending: null,
                 rafId: null,
-                lastUpdate: 0,
-                lastData: null,
-                mapZoom: 100,
-                criticalActive: false
+                criticalActive: false,
+                mapZoom: 100
             };
 
             this.init();
         }
 
-        // ---------- INIT ----------
         init() {
             this.cacheRefs();
-            this.setupAudioContext();
             this.setupMapZoom();
             this.setupBadgeKeyboard();
             this.setupAlarmLimits();
@@ -337,10 +337,6 @@
         }
 
         // ---------- AUDIO ----------
-        setupAudioContext() {
-            // AudioContext must be created after user gesture; lazy-init in toggle
-        }
-
         toggleAudio() {
             if (!this.state.audioEnabled) {
                 if (!this.state.audioCtx) {
@@ -441,8 +437,7 @@
             let startX, startY, scrollLeft, scrollTop;
 
             slider.addEventListener('mousedown', (e) => {
-                isDown = true;
-                wasDragging = false;
+                isDown = true; wasDragging = false;
                 slider.classList.add('cursor-grabbing');
                 startX = e.pageX - slider.offsetLeft;
                 startY = e.pageY - slider.offsetTop;
@@ -462,7 +457,6 @@
                 slider.scrollLeft = scrollLeft - walkX;
                 slider.scrollTop = scrollTop - walkY;
             });
-            // Suppress click after drag to avoid accidentally opening chart
             slider.addEventListener('click', (e) => {
                 if (wasDragging) {
                     e.stopPropagation();
@@ -482,7 +476,7 @@
             this.refs.mapContainer.style.width = '100%';
         }
 
-        // ---------- BADGE KEYBOARD ACCESSIBILITY ----------
+        // ---------- A11Y ----------
         setupBadgeKeyboard() {
             for (let i = 1; i <= this.config.NODE_COUNT; i++) {
                 const badge = this.refs.badges[i];
@@ -513,29 +507,22 @@
                 this.updateStatus('🟢 Connected', 'emerald');
                 client.subscribe(this.config.MQTT_TOPIC, { qos: 0 });
             });
-
-            client.on('reconnect', () => {
-                this.updateStatus('🟡 Reconnecting...', 'amber');
-            });
-
+            client.on('reconnect', () => this.updateStatus('🟡 Reconnecting...', 'amber'));
             client.on('offline', () => {
                 this.updateStatus('🔴 Offline', 'red');
                 this.clearStaleData();
             });
-
             client.on('error', (err) => {
                 console.error('MQTT Error:', err);
                 this.updateStatus('🔴 Error', 'red');
                 this.clearStaleData();
             });
-
             client.on('message', (topic, payload) => {
                 if (!topic.includes('scg/cement/environment_monitoring')) return;
                 try {
                     const data = JSON.parse(payload.toString());
                     this.queueUpdate(data);
                     this.updateStatus('🟢 Connected (Live)', 'emerald');
-                    // Reset stale timer
                     if (this.state.dataTimeout) clearTimeout(this.state.dataTimeout);
                     this.state.dataTimeout = setTimeout(() => this.clearStaleData(), this.config.STALE_MS);
                 } catch (e) {
@@ -554,7 +541,7 @@
             this.refs.status.className = map[color] || map.emerald;
         }
 
-        // ---------- DEBOUNCED DATA UPDATE ----------
+        // ---------- DATA UPDATE (debounced) ----------
         queueUpdate(data) {
             this.state.pending = data;
             if (this.state.rafId) return;
@@ -578,7 +565,6 @@
                 const valH = data['h' + i];
                 const valN = data['n' + i];
 
-                // T & H (no alarm)
                 this.refs.valsT[i].textContent = (valT !== undefined && valT !== -99) ? valT.toFixed(1) : '--';
                 this.refs.valsH[i].textContent = (valH !== undefined && valH !== -99) ? valH.toFixed(1) : '--';
 
@@ -586,7 +572,6 @@
                 const badge = this.refs.badges[i];
                 const ackBtn = this.refs.ackBtns[i];
 
-                // Reset visual classes
                 badge.classList.remove(
                     'badge-warning', 'badge-critical',
                     'badge-warning-ack', 'badge-critical-ack',
@@ -616,7 +601,6 @@
                             if (isAcked) ackBtn.classList.add('hidden');
                         }
                     } else {
-                        // Below warning — clear ack
                         this.state.acknowledged.delete(i);
                         badge.classList.add('bg-slate-900/90', 'border-slate-500');
                         if (ackBtn) ackBtn.classList.add('hidden');
@@ -633,7 +617,6 @@
 
             this.triggerAlarm(anyCriticalUnacked);
 
-            // Toast on newly-triggered critical
             if (anyCriticalUnacked && !this.state.criticalActive) {
                 this.showToast('🚨 ALARM: ค่าเสียงเกิน Critical!', 'error');
             }
@@ -645,7 +628,6 @@
             this.state.dataTimeout = null;
             this.updateStatus('🟠 Stale Data (No Update)', 'amber');
 
-            const { } = this.getLimits();
             for (let i = 1; i <= this.config.NODE_COUNT; i++) {
                 this.refs.valsT[i].textContent = '--';
                 this.refs.valsH[i].textContent = '--';
@@ -654,10 +636,7 @@
 
                 const badge = this.refs.badges[i];
                 const ackBtn = this.refs.ackBtns[i];
-                badge.classList.remove(
-                    'badge-warning', 'badge-critical',
-                    'badge-warning-ack', 'badge-critical-ack'
-                );
+                badge.classList.remove('badge-warning', 'badge-critical', 'badge-warning-ack', 'badge-critical-ack');
                 badge.classList.add('bg-slate-900/90', 'border-slate-500');
                 this.refs.valsN[i].classList.remove('alarm-text', 'warn-text');
                 if (ackBtn) ackBtn.classList.add('hidden');
@@ -667,7 +646,7 @@
             this.stopSiren();
         }
 
-        // ---------- ACKNOWLEDGE ----------
+        // ---------- ACK ----------
         acknowledge(nodeId) {
             this.state.acknowledged.add(nodeId);
             if (this.state.lastData) this.applyData(this.state.lastData);
@@ -754,7 +733,6 @@
             }
 
             if (this.state.chart) {
-                // Update existing instance (perf)
                 this.state.chart.data.labels = labels;
                 this.state.chart.data.datasets[0].data = dataT;
                 this.state.chart.data.datasets[1].data = dataH;
@@ -808,7 +786,6 @@
         }
     }
 
-    // Boot
     const app = new ScadaApp();
     </script>
 </body>
