@@ -144,6 +144,10 @@
                         <input type="number" id="limit-crit" min="30" max="150" step="1" value="95"
                             class="w-16 bg-slate-900 border border-slate-500 rounded px-1 py-0.5 text-xs text-center focus:outline-none focus:border-rose-400">
                     </div>
+                    <div class="flex flex-col items-center justify-center">
+                        <span class="text-[8px] md:text-[9px] text-slate-400">Sheet Sync</span>
+                        <span id="alarm-sync-status" class="text-[10px] md:text-xs font-mono text-slate-300">⏳</span>
+                    </div>
                 </div>
             </div>
 
@@ -290,7 +294,8 @@
                 SIREN_INTERVAL: 600,
                 DEFAULT_WARN: 85,
                 DEFAULT_CRIT: 95,
-                FETCH_TIMEOUT: 10000
+                FETCH_TIMEOUT: 10000,
+                ALARM_SYNC_MS: 30000
             };
 
             this.refs = {};
@@ -309,7 +314,9 @@
                 lastData: null,
                 rafId: null,
                 criticalActive: false,
-                mapZoom: 100
+                mapZoom: 100,
+                saveAlarmTimer: null,
+                syncingAlarm: false
             };
 
             this.init();
@@ -325,19 +332,20 @@
         }
 
         cacheRefs() {
-            this.refs.status        = document.getElementById('connection-status');
-            this.refs.btnAudio      = document.getElementById('btn-audio');
-            this.refs.btnAudioDesk  = document.getElementById('btn-audio-desktop');
-            this.refs.limitWarn     = document.getElementById('limit-warn');
-            this.refs.limitCrit     = document.getElementById('limit-crit');
-            this.refs.mapContainer  = document.getElementById('map-container');
-            this.refs.mapScroll     = document.getElementById('map-scroll-wrapper');
-            this.refs.modal         = document.getElementById('chart-modal');
-            this.refs.modalTitle    = document.getElementById('chart-title');
-            this.refs.loadingText   = document.getElementById('loading-text');
-            this.refs.timeRange     = document.getElementById('time-range');
-            this.refs.toast         = document.getElementById('toast-container');
-            this.refs.canvas        = document.getElementById('historyChart');
+            this.refs.status          = document.getElementById('connection-status');
+            this.refs.btnAudio        = document.getElementById('btn-audio');
+            this.refs.btnAudioDesk    = document.getElementById('btn-audio-desktop');
+            this.refs.limitWarn       = document.getElementById('limit-warn');
+            this.refs.limitCrit       = document.getElementById('limit-crit');
+            this.refs.alarmSyncStatus = document.getElementById('alarm-sync-status');
+            this.refs.mapContainer    = document.getElementById('map-container');
+            this.refs.mapScroll       = document.getElementById('map-scroll-wrapper');
+            this.refs.modal           = document.getElementById('chart-modal');
+            this.refs.modalTitle      = document.getElementById('chart-title');
+            this.refs.loadingText     = document.getElementById('loading-text');
+            this.refs.timeRange       = document.getElementById('time-range');
+            this.refs.toast           = document.getElementById('toast-container');
+            this.refs.canvas          = document.getElementById('historyChart');
 
             this.refs.badges     = [];
             this.refs.valsT      = [];
@@ -435,26 +443,126 @@
             this.showToast('🔔 ทดสอบเสียง', 'info');
         }
 
-        // ---------- ALARM LIMITS ----------
+        // ---------- ALARM LIMITS + GOOGLE SHEET SYNC ----------
         setupAlarmLimits() {
             const savedWarn = this.parseSensorNumber(localStorage.getItem('scada_limit_warn'));
             const savedCrit = this.parseSensorNumber(localStorage.getItem('scada_limit_crit'));
             if (savedWarn !== null) this.refs.limitWarn.value = savedWarn;
             if (savedCrit !== null) this.refs.limitCrit.value = savedCrit;
 
-            const persist = () => {
+            const onUserChange = () => {
                 const { warn, crit } = this.getLimits();
                 this.refs.limitWarn.value = warn;
                 this.refs.limitCrit.value = crit;
                 localStorage.setItem('scada_limit_warn', String(warn));
                 localStorage.setItem('scada_limit_crit', String(crit));
+
                 if (this.state.lastData) this.applyData(this.state.lastData);
                 if (this.state.chart && !this.refs.modal.classList.contains('hidden')) {
                     this.renderChart();
                 }
+
+                // หน่วง 500ms ก่อนยิงลง Sheet กันส่งถี่ตอนกดลูกศรขึ้น/ลง
+                if (this.state.saveAlarmTimer) clearTimeout(this.state.saveAlarmTimer);
+                this.refs.alarmSyncStatus.textContent = '⏳';
+                this.state.saveAlarmTimer = setTimeout(() => {
+                    this.saveAlarmLimitsToSheet(warn, crit);
+                }, 500);
             };
-            this.refs.limitWarn.addEventListener('change', persist);
-            this.refs.limitCrit.addEventListener('change', persist);
+
+            this.refs.limitWarn.addEventListener('change', onUserChange);
+            this.refs.limitCrit.addEventListener('change', onUserChange);
+
+            // ดึงค่าจาก Google Sheet ตอนเปิดหน้าเว็บ + ซิงก์อัตโนมัติทุก 30 วินาที
+            this.fetchAlarmLimitsFromSheet(true);
+            setInterval(() => {
+                const activeEl = document.activeElement;
+                if (activeEl === this.refs.limitWarn || activeEl === this.refs.limitCrit) return;
+                if (this.state.saveAlarmTimer) return;
+                this.fetchAlarmLimitsFromSheet(false);
+            }, this.config.ALARM_SYNC_MS);
+        }
+
+        async fetchAlarmLimitsFromSheet(isInitial = false) {
+            if (this.state.syncingAlarm) return;
+            this.state.syncingAlarm = true;
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), this.config.FETCH_TIMEOUT);
+                const res = await fetch(`${this.config.SCRIPT_URL}?action=getAlarm`, {
+                    signal: controller.signal
+                });
+                clearTimeout(timeoutId);
+                const data = await res.json();
+
+                const remoteWarn = this.parseSensorNumber(data.warn);
+                const remoteCrit = this.parseSensorNumber(data.crit);
+                if (remoteWarn !== null && remoteCrit !== null) {
+                    const currentWarn = Number(this.refs.limitWarn.value);
+                    const currentCrit = Number(this.refs.limitCrit.value);
+                    const changed = currentWarn !== remoteWarn || currentCrit !== remoteCrit;
+
+                    this.refs.limitWarn.value = remoteWarn;
+                    this.refs.limitCrit.value = remoteCrit;
+                    localStorage.setItem('scada_limit_warn', String(remoteWarn));
+                    localStorage.setItem('scada_limit_crit', String(remoteCrit));
+
+                    if (changed) {
+                        if (this.state.lastData) this.applyData(this.state.lastData);
+                        if (this.state.chart && !this.refs.modal.classList.contains('hidden')) {
+                            this.renderChart();
+                        }
+                        if (!isInitial) {
+                            this.showToast(`🔄 ซิงก์ Alarm จาก Sheet (${remoteWarn}/${remoteCrit} dB)`, 'info');
+                        }
+                    }
+                }
+                this.refs.alarmSyncStatus.textContent = '☁️';
+                this.refs.alarmSyncStatus.title = 'ซิงก์กับ Google Sheet แล้ว';
+            } catch (err) {
+                console.error('Fetch Alarm Config Error:', err);
+                this.refs.alarmSyncStatus.textContent = '⚠️';
+                this.refs.alarmSyncStatus.title = 'ดึงค่า Alarm จาก Sheet ไม่สำเร็จ';
+            } finally {
+                this.state.syncingAlarm = false;
+            }
+        }
+
+        async saveAlarmLimitsToSheet(warn, crit) {
+            this.state.saveAlarmTimer = null;
+            this.state.syncingAlarm = true;
+            this.refs.alarmSyncStatus.textContent = '⏳';
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), this.config.FETCH_TIMEOUT);
+                const res = await fetch(this.config.SCRIPT_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({
+                        action: 'setAlarm',
+                        warn: warn,
+                        crit: crit
+                    }),
+                    signal: controller.signal
+                });
+                clearTimeout(timeoutId);
+                const result = await res.json();
+
+                if (result && result.status === 'ok') {
+                    this.refs.alarmSyncStatus.textContent = '☁️';
+                    this.refs.alarmSyncStatus.title = 'บันทึกลง Google Sheet แล้ว';
+                    this.showToast(`☁️ บันทึก Alarm (${warn}/${crit} dB) ลง Sheet แล้ว`, 'success');
+                } else {
+                    throw new Error('Invalid response');
+                }
+            } catch (err) {
+                console.error('Save Alarm Config Error:', err);
+                this.refs.alarmSyncStatus.textContent = '⚠️';
+                this.refs.alarmSyncStatus.title = 'บันทึกไม่สำเร็จ';
+                this.showToast('⚠️ บันทึกค่า Alarm ลง Sheet ไม่สำเร็จ', 'error');
+            } finally {
+                this.state.syncingAlarm = false;
+            }
         }
 
         getLimits() {
