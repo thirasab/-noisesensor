@@ -76,14 +76,14 @@
 
         /* ===== Timestamp overlay: desktop hover only ===== */
         .badge-ts {
-            display: none; /* ซ่อนทุกจอโดย default */
+            display: none;
         }
         @media (min-width: 768px) {
             .badge-ts {
                 display: block;
                 position: absolute;
                 left: 0; right: 0;
-                bottom: -14px; /* ลอยออกนอกการ์ด ไม่ดัน layout */
+                bottom: -14px;
                 font-size: 7px;
                 line-height: 1;
                 color: #94a3b8;
@@ -126,7 +126,7 @@
                     <h1 class="text-sm md:text-xl font-bold text-emerald-400 tracking-wide">SCG CEMENT</h1>
                     <p class="text-[9px] md:text-sm mt-0.5" id="connection-status" aria-live="polite">🟡 Connecting...</p>
                 </div>
-                <button id="btn-audio" onclick="app.toggleAudio()"
+                <button type="button" id="btn-audio" onclick="app.toggleAudio()"
                     class="md:hidden px-3 py-1.5 bg-rose-600 text-white text-[10px] font-bold rounded border border-rose-400 shadow min-h-[32px]">
                     🔇 เปิดเสียง
                 </button>
@@ -148,11 +148,11 @@
             </div>
 
             <div class="hidden md:flex items-center gap-2">
-                <button onclick="app.testSiren()" title="ทดสอบเสียง"
+                <button type="button" onclick="app.testSiren()" title="ทดสอบเสียง"
                     class="px-2 py-1.5 bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold rounded border border-slate-500 min-h-[32px]">
                     🔔
                 </button>
-                <button id="btn-audio-desktop" onclick="app.toggleAudio()"
+                <button type="button" id="btn-audio-desktop" onclick="app.toggleAudio()"
                     class="px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold rounded border border-rose-400 flex items-center gap-1 min-h-[32px]">
                     🔇 ระบบเสียงปิดอยู่
                 </button>
@@ -169,9 +169,9 @@
     <!-- Map -->
     <div class="relative w-full bg-slate-800 rounded-lg border border-slate-700 shadow-xl overflow-hidden group">
         <div class="absolute top-2 right-2 z-10 hidden md:flex flex-col gap-1 bg-slate-900/80 p-1.5 rounded-lg border border-slate-600 shadow-xl">
-            <button onclick="app.zoomMap(20)" aria-label="ซูมเข้า" class="w-8 h-8 flex items-center justify-center bg-slate-700 hover:bg-emerald-600 text-white font-bold rounded transition">➕</button>
-            <button onclick="app.resetZoom()" aria-label="พอดีหน้าจอ" class="w-8 h-8 flex items-center justify-center bg-slate-700 hover:bg-blue-600 text-white font-bold rounded transition text-xs">FIT</button>
-            <button onclick="app.zoomMap(-20)" aria-label="ซูมออก" class="w-8 h-8 flex items-center justify-center bg-slate-700 hover:bg-rose-600 text-white font-bold rounded transition">➖</button>
+            <button type="button" onclick="app.zoomMap(20)" aria-label="ซูมเข้า" class="w-8 h-8 flex items-center justify-center bg-slate-700 hover:bg-emerald-600 text-white font-bold rounded transition">➕</button>
+            <button type="button" onclick="app.resetZoom()" aria-label="พอดีหน้าจอ" class="w-8 h-8 flex items-center justify-center bg-slate-700 hover:bg-blue-600 text-white font-bold rounded transition text-xs">FIT</button>
+            <button type="button" onclick="app.zoomMap(-20)" aria-label="ซูมออก" class="w-8 h-8 flex items-center justify-center bg-slate-700 hover:bg-rose-600 text-white font-bold rounded transition">➖</button>
         </div>
 
         <div id="map-scroll-wrapper" class="w-full overflow-auto hide-scroll cursor-grab max-h-[80vh]">
@@ -183,7 +183,7 @@
                     aria-label="จุดที่ 1 - ดูกราฟย้อนหลัง"
                     class="sensor-badge bg-slate-900/90 border-2 border-slate-500 rounded p-1.5 shadow-md text-[10px] leading-tight hover:border-emerald-400"
                     style="top: 75%; left: 27%;">
-                    <div class="ack-btn warn hidden" onclick="event.stopPropagation(); app.acknowledge(1)" title="รับทราบ">✕</div>
+                    <button type="button" class="ack-btn warn hidden" onclick="event.stopPropagation(); app.acknowledge(1)" title="รับทราบ" aria-label="รับทราบจุดที่ 1">✕</button>
                     <div class="font-bold text-emerald-400 border-b border-slate-600 pb-0.5 mb-0.5 text-center text-[11px]">จุดที่ 1</div>
                     <div class="whitespace-nowrap"><span class="text-amber-400">T:</span> <span id="val-t1" class="font-mono text-slate-100">--</span></div>
                     <div class="whitespace-nowrap"><span class="text-blue-400">H:</span> <span id="val-h1" class="font-mono text-slate-100">--</span></div>
@@ -196,7 +196,7 @@
                     aria-label="จุดที่ 2 - ดูกราฟย้อนหลัง"
                     class="sensor-badge bg-slate-900/90 border-2 border-slate-500 rounded p-1.5 shadow-md text-[10px] leading-tight hover:border-emerald-400"
                     style="top: 57%; left: 38%;">
-                    <div class="ack-btn warn hidden" onclick="event.stopPropagation(); app.acknowledge(2)" title="รับทราบ">✕</div>
+                    <button type="button" class="ack-btn warn hidden" onclick="event.stopPropagation(); app.acknowledge(2)" title="รับทราบ" aria-label="รับทราบจุดที่ 2">✕</button>
                     <div class="font-bold text-emerald-400 border-b border-slate-600 pb-0.5 mb-0.5 text-center text-[11px]">จุดที่ 2</div>
                     <div class="whitespace-nowrap"><span class="text-amber-400">T:</span> <span id="val-t2" class="font-mono text-slate-100">--</span></div>
                     <div class="whitespace-nowrap"><span class="text-blue-400">H:</span> <span id="val-h2" class="font-mono text-slate-100">--</span></div>
@@ -209,7 +209,7 @@
                     aria-label="จุดที่ 3 - ดูกราฟย้อนหลัง"
                     class="sensor-badge bg-slate-900/90 border-2 border-slate-500 rounded p-1.5 shadow-md text-[10px] leading-tight hover:border-emerald-400"
                     style="top: 44%; left: 52%;">
-                    <div class="ack-btn warn hidden" onclick="event.stopPropagation(); app.acknowledge(3)" title="รับทราบ">✕</div>
+                    <button type="button" class="ack-btn warn hidden" onclick="event.stopPropagation(); app.acknowledge(3)" title="รับทราบ" aria-label="รับทราบจุดที่ 3">✕</button>
                     <div class="font-bold text-emerald-400 border-b border-slate-600 pb-0.5 mb-0.5 text-center text-[11px]">จุดที่ 3</div>
                     <div class="whitespace-nowrap"><span class="text-amber-400">T:</span> <span id="val-t3" class="font-mono text-slate-100">--</span></div>
                     <div class="whitespace-nowrap"><span class="text-blue-400">H:</span> <span id="val-h3" class="font-mono text-slate-100">--</span></div>
@@ -222,7 +222,7 @@
                     aria-label="จุดที่ 4 - ดูกราฟย้อนหลัง"
                     class="sensor-badge bg-slate-900/90 border-2 border-slate-500 rounded p-1.5 shadow-md text-[10px] leading-tight hover:border-emerald-400"
                     style="top: 19%; left: 63%;">
-                    <div class="ack-btn warn hidden" onclick="event.stopPropagation(); app.acknowledge(4)" title="รับทราบ">✕</div>
+                    <button type="button" class="ack-btn warn hidden" onclick="event.stopPropagation(); app.acknowledge(4)" title="รับทราบ" aria-label="รับทราบจุดที่ 4">✕</button>
                     <div class="font-bold text-emerald-400 border-b border-slate-600 pb-0.5 mb-0.5 text-center text-[11px]">จุดที่ 4</div>
                     <div class="whitespace-nowrap"><span class="text-amber-400">T:</span> <span id="val-t4" class="font-mono text-slate-100">--</span></div>
                     <div class="whitespace-nowrap"><span class="text-blue-400">H:</span> <span id="val-h4" class="font-mono text-slate-100">--</span></div>
@@ -235,7 +235,7 @@
                     aria-label="จุดที่ 5 - ดูกราฟย้อนหลัง"
                     class="sensor-badge bg-slate-900/90 border-2 border-slate-500 rounded p-1.5 shadow-md text-[10px] leading-tight hover:border-emerald-400"
                     style="top: 10%; left: 78%;">
-                    <div class="ack-btn warn hidden" onclick="event.stopPropagation(); app.acknowledge(5)" title="รับทราบ">✕</div>
+                    <button type="button" class="ack-btn warn hidden" onclick="event.stopPropagation(); app.acknowledge(5)" title="รับทราบ" aria-label="รับทราบจุดที่ 5">✕</button>
                     <div class="font-bold text-emerald-400 border-b border-slate-600 pb-0.5 mb-0.5 text-center text-[11px]">จุดที่ 5</div>
                     <div class="whitespace-nowrap"><span class="text-amber-400">T:</span> <span id="val-t5" class="font-mono text-slate-100">--</span></div>
                     <div class="whitespace-nowrap"><span class="text-blue-400">H:</span> <span id="val-h5" class="font-mono text-slate-100">--</span></div>
@@ -247,17 +247,19 @@
     </div>
 
     <!-- Chart Modal -->
-    <div id="chart-modal" class="fixed inset-0 bg-black/80 z-50 hidden flex-col justify-center items-center p-2 md:p-6">
-        <div class="bg-slate-900 border border-slate-600 rounded-xl w-full max-w-4xl p-3 md:p-5 shadow-2xl flex flex-col relative">
+    <div id="chart-modal" role="dialog" aria-modal="true" aria-labelledby="chart-title"
+        class="fixed inset-0 bg-black/80 z-50 hidden flex-col justify-center items-center p-2 md:p-6">
+        <div id="chart-modal-box" onclick="event.stopPropagation()"
+            class="bg-slate-900 border border-slate-600 rounded-xl w-full max-w-4xl p-3 md:p-5 shadow-2xl flex flex-col relative">
             <div class="flex justify-between items-center mb-3 border-b border-slate-700 pb-2">
                 <h2 id="chart-title" class="text-base md:text-xl font-bold text-emerald-400">Trend History - จุดที่ X</h2>
-                <button onclick="app.closeChart()" aria-label="ปิด" class="text-rose-400 hover:text-rose-300 font-bold text-2xl px-2 leading-none">&times;</button>
+                <button type="button" onclick="app.closeChart()" aria-label="ปิด" class="text-rose-400 hover:text-rose-300 font-bold text-2xl px-2 leading-none">&times;</button>
             </div>
 
             <div class="flex justify-between items-center mb-3 gap-2">
                 <span id="loading-text" class="text-amber-400 text-xs md:text-sm animate-pulse hidden">⏳ กำลังโหลด...</span>
                 <div class="flex gap-2 ml-auto">
-                    <button onclick="app.refreshChart()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-600 rounded px-2 py-1 text-xs md:text-sm">🔄</button>
+                    <button type="button" onclick="app.refreshChart()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-600 rounded px-2 py-1 text-xs md:text-sm">🔄</button>
                     <select id="time-range" onchange="app.renderChart()"
                         class="bg-slate-800 text-slate-200 border border-slate-600 rounded px-2 py-1 text-xs md:text-sm focus:outline-none focus:border-emerald-500">
                         <option value="1">1 ชั่วโมงล่าสุด</option>
@@ -304,6 +306,7 @@
                 fetchingChart: false,
                 activeNode: 1,
                 pending: null,
+                lastData: null,
                 rafId: null,
                 criticalActive: false,
                 mapZoom: 100
@@ -316,6 +319,7 @@
             this.cacheRefs();
             this.setupMapZoom();
             this.setupBadgeKeyboard();
+            this.setupModalDismiss();
             this.setupAlarmLimits();
             this.setupMQTT();
         }
@@ -353,6 +357,15 @@
             }
         }
 
+        // ---------- SAFE NUMBER PARSER ----------
+        parseSensorNumber(raw) {
+            if (raw === undefined || raw === null || raw === '') return null;
+            if (typeof raw === 'boolean') return null;
+            const num = Number(raw);
+            if (!Number.isFinite(num) || num === -99) return null;
+            return num;
+        }
+
         // ---------- AUDIO ----------
         toggleAudio() {
             if (!this.state.audioEnabled) {
@@ -363,9 +376,9 @@
                 this.state.audioEnabled = true;
 
                 const onStyle = 'bg-emerald-600 text-white border-emerald-400';
-                this.refs.btnAudio.innerHTML = '🔊 เสียงทำงาน';
+                this.refs.btnAudio.textContent = '🔊 เสียงทำงาน';
                 this.refs.btnAudio.className = `md:hidden px-3 py-1.5 text-[10px] font-bold rounded border shadow min-h-[32px] ${onStyle}`;
-                this.refs.btnAudioDesk.innerHTML = '🔊 เสียงทำงาน';
+                this.refs.btnAudioDesk.textContent = '🔊 เสียงทำงาน';
                 this.refs.btnAudioDesk.className = `hidden md:flex px-3 py-1.5 text-xs font-bold rounded border items-center gap-1 min-h-[32px] ${onStyle}`;
                 this.showToast('🔊 ระบบเสียงเปิด', 'success');
             } else {
@@ -373,9 +386,9 @@
                 this.stopSiren();
 
                 const redStyle = 'bg-rose-600 text-white border-rose-400';
-                this.refs.btnAudio.innerHTML = '🔇 เปิดเสียง';
+                this.refs.btnAudio.textContent = '🔇 เปิดเสียง';
                 this.refs.btnAudio.className = `md:hidden px-3 py-1.5 text-[10px] font-bold rounded border shadow min-h-[32px] ${redStyle}`;
-                this.refs.btnAudioDesk.innerHTML = '🔇 ระบบเสียงปิดอยู่';
+                this.refs.btnAudioDesk.textContent = '🔇 ระบบเสียงปิดอยู่';
                 this.refs.btnAudioDesk.className = `hidden md:flex px-3 py-1.5 hover:bg-rose-500 text-xs font-bold rounded border items-center gap-1 min-h-[32px] ${redStyle}`;
             }
         }
@@ -424,26 +437,34 @@
 
         // ---------- ALARM LIMITS ----------
         setupAlarmLimits() {
-            const savedWarn = localStorage.getItem('scada_limit_warn');
-            const savedCrit = localStorage.getItem('scada_limit_crit');
-            if (savedWarn) this.refs.limitWarn.value = savedWarn;
-            if (savedCrit) this.refs.limitCrit.value = savedCrit;
+            const savedWarn = this.parseSensorNumber(localStorage.getItem('scada_limit_warn'));
+            const savedCrit = this.parseSensorNumber(localStorage.getItem('scada_limit_crit'));
+            if (savedWarn !== null) this.refs.limitWarn.value = savedWarn;
+            if (savedCrit !== null) this.refs.limitCrit.value = savedCrit;
 
             const persist = () => {
-                localStorage.setItem('scada_limit_warn', this.refs.limitWarn.value);
-                localStorage.setItem('scada_limit_crit', this.refs.limitCrit.value);
+                const { warn, crit } = this.getLimits();
+                this.refs.limitWarn.value = warn;
+                this.refs.limitCrit.value = crit;
+                localStorage.setItem('scada_limit_warn', String(warn));
+                localStorage.setItem('scada_limit_crit', String(crit));
                 if (this.state.lastData) this.applyData(this.state.lastData);
+                if (this.state.chart && !this.refs.modal.classList.contains('hidden')) {
+                    this.renderChart();
+                }
             };
             this.refs.limitWarn.addEventListener('change', persist);
             this.refs.limitCrit.addEventListener('change', persist);
         }
 
         getLimits() {
-            let warn = parseFloat(this.refs.limitWarn.value);
-            let crit = parseFloat(this.refs.limitCrit.value);
-            if (isNaN(warn)) warn = this.config.DEFAULT_WARN;
-            if (isNaN(crit)) crit = this.config.DEFAULT_CRIT;
-            if (crit <= warn) crit = warn + 1;
+            let warn = this.parseSensorNumber(this.refs.limitWarn.value);
+            let crit = this.parseSensorNumber(this.refs.limitCrit.value);
+            if (warn === null) warn = this.config.DEFAULT_WARN;
+            if (crit === null) crit = this.config.DEFAULT_CRIT;
+            warn = Math.max(30, Math.min(150, warn));
+            crit = Math.max(30, Math.min(150, crit));
+            if (crit <= warn) crit = Math.min(150, warn + 1);
             return { warn, crit };
         }
 
@@ -493,7 +514,7 @@
             this.refs.mapContainer.style.width = '100%';
         }
 
-        // ---------- A11Y ----------
+        // ---------- A11Y & MODAL DISMISS ----------
         setupBadgeKeyboard() {
             for (let i = 1; i <= this.config.NODE_COUNT; i++) {
                 const badge = this.refs.badges[i];
@@ -505,6 +526,20 @@
                     }
                 });
             }
+        }
+
+        setupModalDismiss() {
+            this.refs.modal.addEventListener('click', (e) => {
+                if (e.target === this.refs.modal) {
+                    this.closeChart();
+                }
+            });
+
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && !this.refs.modal.classList.contains('hidden')) {
+                    this.closeChart();
+                }
+            });
         }
 
         // ---------- MQTT ----------
@@ -538,6 +573,7 @@
                 if (!topic.includes('scg/cement/environment_monitoring')) return;
                 try {
                     const data = JSON.parse(payload.toString());
+                    if (!data || typeof data !== 'object') return;
                     this.queueUpdate(data);
                     this.updateStatus('🟢 Connected (Live)', 'emerald');
                     if (this.state.dataTimeout) clearTimeout(this.state.dataTimeout);
@@ -554,7 +590,7 @@
                 amber:   'text-[9px] md:text-sm text-amber-400 mt-0.5 font-bold',
                 red:     'text-[9px] md:text-sm text-red-400 mt-0.5 font-bold'
             };
-            this.refs.status.innerHTML = text;
+            this.refs.status.textContent = text;
             this.refs.status.className = map[color] || map.emerald;
         }
 
@@ -569,7 +605,7 @@
         }
 
         applyData(data) {
-            if (!data) return;
+            if (!data || typeof data !== 'object') return;
             this.state.lastData = data;
             this.state.stale = false;
             const { warn, crit } = this.getLimits();
@@ -578,12 +614,12 @@
             const ts = now.toLocaleTimeString('th-TH', { hour12: false });
 
             for (let i = 1; i <= this.config.NODE_COUNT; i++) {
-                const valT = data['t' + i];
-                const valH = data['h' + i];
-                const valN = data['n' + i];
+                const valT = this.parseSensorNumber(data['t' + i]);
+                const valH = this.parseSensorNumber(data['h' + i]);
+                const valN = this.parseSensorNumber(data['n' + i]);
 
-                this.refs.valsT[i].textContent = (valT !== undefined && valT !== -99) ? valT.toFixed(1) : '--';
-                this.refs.valsH[i].textContent = (valH !== undefined && valH !== -99) ? valH.toFixed(1) : '--';
+                this.refs.valsT[i].textContent = valT !== null ? valT.toFixed(1) : '--';
+                this.refs.valsH[i].textContent = valH !== null ? valH.toFixed(1) : '--';
 
                 const elN = this.refs.valsN[i];
                 const badge = this.refs.badges[i];
@@ -596,7 +632,7 @@
                 );
                 elN.classList.remove('alarm-text', 'warn-text');
 
-                if (valN !== undefined && valN !== -99) {
+                if (valN !== null) {
                     elN.textContent = valN.toFixed(1);
                     const isAcked = this.state.acknowledged.has(i);
 
@@ -673,7 +709,7 @@
         // ---------- CHART ----------
         async openChart(nodeId) {
             this.state.activeNode = nodeId;
-            this.refs.modalTitle.innerText = `Trend History - จุดที่ ${nodeId}`;
+            this.refs.modalTitle.textContent = `Trend History - จุดที่ ${nodeId}`;
             this.refs.modal.classList.remove('hidden');
             this.refs.modal.classList.add('flex');
 
@@ -706,7 +742,7 @@
                 clearTimeout(timeoutId);
                 const data = await res.json();
 
-                if (!data || data.error || data.length === 0) {
+                if (!Array.isArray(data) || data.length === 0) {
                     this.showToast('ยังไม่มีข้อมูลในระบบ', 'warn');
                 } else {
                     this.state.chartData = data;
@@ -725,28 +761,30 @@
         }
 
         renderChart() {
-            if (!this.state.chartData || this.state.chartData.length === 0) return;
+            if (!Array.isArray(this.state.chartData) || this.state.chartData.length === 0) return;
 
-            const hours = parseInt(this.refs.timeRange.value);
+            const hours = parseInt(this.refs.timeRange.value, 10) || 24;
             const now = Date.now();
             const filtered = this.state.chartData.filter(row => {
+                if (!row || !row.time) return false;
                 const t = new Date(row.time).getTime();
-                return (now - t) <= (hours * 3600000);
+                return Number.isFinite(t) && (now - t) <= (hours * 3600000);
             });
 
-            const labels = [], dataT = [], dataH = [], dataN = [];
+            const { warn, crit } = this.getLimits();
+            const labels = [], dataT = [], dataH = [], dataN = [], warnLine = [], critLine = [];
+
             for (const row of filtered) {
                 const d = new Date(row.time);
                 labels.push(
                     String(d.getHours()).padStart(2, '0') + ':' +
                     String(d.getMinutes()).padStart(2, '0')
                 );
-                const valT = row['t' + this.state.activeNode];
-                const valH = row['h' + this.state.activeNode];
-                const valN = row['n' + this.state.activeNode];
-                dataT.push(valT === -99 ? null : valT);
-                dataH.push(valH === -99 ? null : valH);
-                dataN.push(valN === -99 ? null : valN);
+                dataT.push(this.parseSensorNumber(row['t' + this.state.activeNode]));
+                dataH.push(this.parseSensorNumber(row['h' + this.state.activeNode]));
+                dataN.push(this.parseSensorNumber(row['n' + this.state.activeNode]));
+                warnLine.push(warn);
+                critLine.push(crit);
             }
 
             if (this.state.chart) {
@@ -754,6 +792,10 @@
                 this.state.chart.data.datasets[0].data = dataT;
                 this.state.chart.data.datasets[1].data = dataH;
                 this.state.chart.data.datasets[2].data = dataN;
+                this.state.chart.data.datasets[3].label = `Warn (${warn} dB)`;
+                this.state.chart.data.datasets[3].data = warnLine;
+                this.state.chart.data.datasets[4].label = `Crit (${crit} dB)`;
+                this.state.chart.data.datasets[4].data = critLine;
                 this.state.chart.update('none');
             } else {
                 const ctx = this.refs.canvas.getContext('2d');
@@ -764,7 +806,9 @@
                         datasets: [
                             { label: 'อุณหภูมิ (°C)', data: dataT, borderColor: '#fbbf24', backgroundColor: 'rgba(251,191,36,0.1)',  yAxisID: 'y',  tension: 0.3, pointRadius: 1 },
                             { label: 'ความชื้น (%)',  data: dataH, borderColor: '#60a5fa', backgroundColor: 'rgba(96,165,250,0.1)',  yAxisID: 'y',  tension: 0.3, pointRadius: 1 },
-                            { label: 'เสียง (dB)',    data: dataN, borderColor: '#fb7185', backgroundColor: 'rgba(251,113,133,0.1)', yAxisID: 'y1', tension: 0.3, pointRadius: 1 }
+                            { label: 'เสียง (dB)',    data: dataN, borderColor: '#fb7185', backgroundColor: 'rgba(251,113,133,0.1)', yAxisID: 'y1', tension: 0.3, pointRadius: 1 },
+                            { label: `Warn (${warn} dB)`, data: warnLine, borderColor: '#f59e0b', borderDash: [6, 4], borderWidth: 1.5, pointRadius: 0, fill: false, yAxisID: 'y1' },
+                            { label: `Crit (${crit} dB)`, data: critLine, borderColor: '#ef4444', borderDash: [3, 3], borderWidth: 1.5, pointRadius: 0, fill: false, yAxisID: 'y1' }
                         ]
                     },
                     options: {
@@ -775,7 +819,7 @@
                         scales: {
                             x:  { ticks: { color: '#94a3b8', maxTicksLimit: 12 }, grid: { color: '#334155' } },
                             y:  { type: 'linear', position: 'left',  min: 0, max: 100, ticks: { color: '#cbd5e1' }, grid: { color: '#334155' }, title: { display: true, text: '°C / %', color: '#cbd5e1' } },
-                            y1: { type: 'linear', position: 'right', min: 30, max: 120, ticks: { color: '#fb7185' }, grid: { drawOnChartArea: false }, title: { display: true, text: 'dB', color: '#fb7185' } }
+                            y1: { type: 'linear', position: 'right', min: 30, max: 130, ticks: { color: '#fb7185' }, grid: { drawOnChartArea: false }, title: { display: true, text: 'dB', color: '#fb7185' } }
                         }
                     }
                 });
