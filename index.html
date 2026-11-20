@@ -15,571 +15,404 @@
         .cursor-grab { cursor: grab; }
         .cursor-grabbing { cursor: grabbing !important; }
 
-        .map-container { 
-            position: relative; 
-            display: block;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            background: #1a1a2e;
-        }
-
-        /* Grid background สำหรับแผนที่ */
-        .map-grid {
+        .map-container { position: relative; display: block; width: 100%; transition: width 0.3s ease-out; }
+        
+        .sensor-badge {
             position: absolute;
-            inset: 0;
-            background-image: 
-                linear-gradient(rgba(0,255,200,0.05) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(0,255,200,0.05) 1px, transparent 1px);
-            background-size: 40px 40px;
-            pointer-events: none;
+            transform: translate(-50%, -50%) scale(0.60);
+            transform-origin: center center;
+            transition: all 0.2s ease;
+            cursor: pointer; 
         }
+        @media (min-width: 768px) {
+            .sensor-badge { transform: translate(-50%, -50%) scale(0.85); }
+        }
+        .sensor-badge:active { transform: translate(-50%, -50%) scale(0.55); filter: brightness(1.2); }
+        @media (min-width: 768px) { .sensor-badge:active { transform: translate(-50%, -50%) scale(0.80); } }
 
-        /* Marker styles */
-        .marker {
-            position: absolute;
-            transform: translate(-50%, -50%);
-            cursor: pointer;
-            z-index: 10;
-            transition: transform 0.2s;
+        @keyframes scada-blink {
+            0% { background-color: rgba(127, 29, 29, 0.95); border-color: #ef4444; }
+            50% { background-color: rgba(69, 10, 10, 0.9); border-color: #7f1d1d; }
+            100% { background-color: rgba(127, 29, 29, 0.95); border-color: #ef4444; }
         }
-        .marker:hover {
-            transform: translate(-50%, -50%) scale(1.3);
-            z-index: 20;
-        }
-        .marker-dot {
-            width: 14px;
-            height: 14px;
-            border-radius: 50%;
-            border: 2px solid #fff;
-            box-shadow: 0 0 10px currentColor;
-            animation: pulse 2s infinite;
-        }
-        @keyframes pulse {
-            0%, 100% { box-shadow: 0 0 5px currentColor; }
-            50% { box-shadow: 0 0 20px currentColor, 0 0 30px currentColor; }
-        }
-        .marker-label {
-            position: absolute;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            white-space: nowrap;
-            font-size: 10px;
-            color: #e2e8f0;
-            background: rgba(0,0,0,0.6);
-            padding: 2px 6px;
-            border-radius: 4px;
-            border: 1px solid rgba(255,255,255,0.2);
-        }
-
-        /* Gauge styling */
-        .gauge-ring {
-            transform: rotate(-90deg);
-            transform-origin: 50% 50%;
-        }
-
-        /* Scrollable log */
-        .log-entry {
-            animation: slideIn 0.3s ease-out;
-        }
-        @keyframes slideIn {
-            from { opacity: 0; transform: translateX(-10px); }
-            to { opacity: 1; transform: translateX(0); }
-        }
-
-        /* Blinking alert */
-        .blink {
-            animation: blink 1s infinite;
-        }
-        @keyframes blink {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.3; }
-        }
+        .alarm-active { animation: scada-blink 1s infinite; color: #fca5a5; }
+        .alarm-text { color: #fca5a5 !important; font-weight: bold; }
     </style>
 </head>
-<body class="bg-slate-900 text-slate-200 min-h-screen font-sans">
+<body class="bg-slate-950 text-slate-200 font-sans min-h-screen flex flex-col p-1 md:p-4">
 
-    <!-- Header -->
-    <header class="bg-slate-800 border-b border-slate-700 px-4 py-3 flex items-center justify-between shadow-lg">
-        <div class="flex items-center gap-3">
-            <div class="w-10 h-10 bg-emerald-500 rounded-lg flex items-center justify-center font-bold text-slate-900 text-lg">SCG</div>
-            <div>
-                <h1 class="text-lg font-bold text-white leading-tight">Environmental SCADA</h1>
-                <p class="text-xs text-slate-400">Cement Plant Monitoring System</p>
+    <!-- Header & Alarm Controls -->
+    <header class="mb-2 bg-slate-900 border border-slate-700 rounded-lg p-2 shadow-lg">
+        <div class="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-2">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h1 class="text-sm md:text-xl font-bold text-emerald-400 tracking-wide">SCG CEMENT</h1>
+                    <p class="text-[9px] md:text-sm mt-0.5" id="connection-status">🟡 Connecting...</p>
+                </div>
+                <button id="btn-audio" onclick="toggleAudio()" class="md:hidden px-2 py-1 bg-rose-600 text-white text-[9px] font-bold rounded border border-rose-400 shadow">🔇 เปิดเสียง</button>
             </div>
-        </div>
-        <div class="flex items-center gap-4">
-            <div class="flex items-center gap-2">
-                <span id="connStatus" class="w-3 h-3 rounded-full bg-red-500"></span>
-                <span id="connText" class="text-xs text-slate-400">Disconnected</span>
+            
+            <!-- ตั้งค่า Alarm เฉพาะ Noise -->
+            <div class="flex justify-center md:justify-start bg-slate-800 p-1.5 rounded border border-slate-600">
+                <div class="flex flex-row md:flex-col items-center justify-center gap-2 md:gap-0 w-full md:w-auto px-2">
+                    <label class="text-[10px] md:text-xs font-bold text-rose-400">Alarm Max N (dB)</label>
+                    <input type="number" id="limit-noise" value="85" class="w-20 bg-slate-900 border border-slate-500 rounded px-1 py-0.5 text-xs text-center focus:outline-none focus:border-rose-400 md:mt-0.5">
+                </div>
             </div>
-            <div class="text-xs text-slate-400" id="clock">--:--:--</div>
-            <button onclick="toggleMapDrag()" id="dragBtn" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 rounded text-xs transition">
-                🔓 ปลดล็อคแผนที่
+
+            <button id="btn-audio-desktop" onclick="toggleAudio()" class="hidden md:flex px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold rounded border border-rose-400 items-center gap-1">
+                🔇 ระบบเสียงปิดอยู่
             </button>
         </div>
     </header>
 
-    <!-- Main Grid -->
-    <main class="p-4 grid grid-cols-1 lg:grid-cols-3 gap-4" style="height: calc(100vh - 70px);">
+    <div class="text-center text-[9px] md:text-xs text-slate-400 mb-1">
+        👆 แตะการ์ดเพื่อดูกราฟ | 💻 (บนคอม) ใช้ปุ่มซูมขวาบนและคลิกลากเมาส์เลื่อนภาพได้
+    </div>
 
-        <!-- Left: Map (Drag & Drop) -->
-        <section class="lg:col-span-2 bg-slate-800 rounded-xl border border-slate-700 overflow-hidden flex flex-col">
-            <div class="px-4 py-2 border-b border-slate-700 flex items-center justify-between">
-                <h2 class="text-sm font-semibold text-emerald-400">📍 แผนผังโรงงาน (Plant Layout)</h2>
-                <span class="text-xs text-slate-500">ลากเพื่อเลื่อนแผนที่ • คลิก Marker เพื่อดูข้อมูล</span>
-            </div>
-            <div id="mapContainer" class="map-container flex-1 cursor-grab select-none">
-                <div class="map-grid"></div>
-                <!-- Markers will be injected here by JS -->
-                <div id="markersLayer" class="absolute inset-0"></div>
-            </div>
-        </section>
+    <!-- พื้นหลังแผนที่โรงงาน (พร้อมระบบ Zoom & Pan) -->
+    <div class="relative w-full bg-slate-800 rounded-lg border border-slate-700 shadow-xl overflow-hidden group">
+        
+        <!-- เครื่องมือซูมบน Desktop -->
+        <div class="absolute top-2 right-2 z-10 hidden md:flex flex-col gap-1 bg-slate-900/80 p-1.5 rounded-lg border border-slate-600 shadow-xl">
+            <button onclick="zoomMap(20)" class="w-8 h-8 flex items-center justify-center bg-slate-700 hover:bg-emerald-600 text-white font-bold rounded transition">➕</button>
+            <button onclick="resetZoom()" class="w-8 h-8 flex items-center justify-center bg-slate-700 hover:bg-blue-600 text-white font-bold rounded transition text-xs">FIT</button>
+            <button onclick="zoomMap(-20)" class="w-8 h-8 flex items-center justify-center bg-slate-700 hover:bg-rose-600 text-white font-bold rounded transition">➖</button>
+        </div>
 
-        <!-- Right: Panels -->
-        <aside class="lg:col-span-1 flex flex-col gap-4 overflow-y-auto hide-scroll">
+        <!-- กล่องครอบสำหรับการเลื่อน (Pan) -->
+        <div id="map-scroll-wrapper" class="w-full overflow-auto hide-scroll cursor-grab max-h-[80vh]">
+            <div id="map-container" class="map-container" style="width: 100%;">
+                <img src="map-bg.jpg" alt="Plant Map" class="w-full h-auto block opacity-80 pointer-events-none">
 
-            <!-- Real-time Gauge -->
-            <div class="bg-slate-800 rounded-xl border border-slate-700 p-4">
-                <h2 class="text-sm font-semibold text-emerald-400 mb-3">💨 ค่าฝุ่นละออง PM2.5 (µg/m³)</h2>
-                <div class="relative w-40 h-40 mx-auto">
-                    <svg class="w-full h-full gauge-ring" viewBox="0 0 100 100">
-                        <circle cx="50" cy="50" r="42" fill="none" stroke="#334155" stroke-width="8"/>
-                        <circle id="gaugeArc" cx="50" cy="50" r="42" fill="none" stroke="#10b981" stroke-width="8"
-                                stroke-linecap="round" stroke-dasharray="264" stroke-dashoffset="264"
-                                style="transition: stroke-dashoffset 0.5s, stroke 0.5s;"/>
-                    </svg>
-                    <div class="absolute inset-0 flex flex-col items-center justify-center">
-                        <span id="pm25Value" class="text-3xl font-bold text-white">--</span>
-                        <span id="pm25Status" class="text-xs text-slate-400">รอข้อมูล</span>
-                    </div>
+                <!-- จุดที่ 1 -->
+                <div id="badge-1" onclick="openChartModal(1)" class="sensor-badge bg-slate-900/90 border-2 border-slate-500 rounded p-1.5 shadow-md text-[10px] leading-tight hover:border-emerald-400" style="top: 75%; left: 27%;">
+                    <div class="font-bold text-emerald-400 border-b border-slate-600 pb-0.5 mb-0.5 text-center text-[11px]">จุดที่ 1</div>
+                    <div class="whitespace-nowrap"><span class="text-amber-400">T:</span> <span id="val-t1" class="font-mono text-slate-100">--</span></div>
+                    <div class="whitespace-nowrap"><span class="text-blue-400">H:</span> <span id="val-h1" class="font-mono text-slate-100">--</span></div>
+                    <div class="whitespace-nowrap"><span class="text-rose-400">N:</span> <span id="val-n1" class="font-mono text-slate-100">--</span></div>
                 </div>
-                <div class="grid grid-cols-3 gap-2 mt-3 text-center text-xs">
-                    <div class="bg-slate-700/50 rounded p-2">
-                        <div class="text-slate-400">ต่ำสุด</div>
-                        <div id="pm25Min" class="text-emerald-400 font-semibold">--</div>
-                    </div>
-                    <div class="bg-slate-700/50 rounded p-2">
-                        <div class="text-slate-400">สูงสุด</div>
-                        <div id="pm25Max" class="text-red-400 font-semibold">--</div>
-                    </div>
-                    <div class="bg-slate-700/50 rounded p-2">
-                        <div class="text-slate-400">เฉลี่ย</div>
-                        <div id="pm25Avg" class="text-cyan-400 font-semibold">--</div>
-                    </div>
-                </div>
-            </div>
 
-            <!-- Chart -->
-            <div class="bg-slate-800 rounded-xl border border-slate-700 p-4">
-                <h2 class="text-sm font-semibold text-emerald-400 mb-2">📈 แนวโน้มค่าฝุ่น (30 วินาทีล่าสุด)</h2>
-                <div class="h-40">
-                    <canvas id="trendChart"></canvas>
+                <!-- จุดที่ 2 -->
+                <div id="badge-2" onclick="openChartModal(2)" class="sensor-badge bg-slate-900/90 border-2 border-slate-500 rounded p-1.5 shadow-md text-[10px] leading-tight hover:border-emerald-400" style="top: 57%; left: 38%;">
+                    <div class="font-bold text-emerald-400 border-b border-slate-600 pb-0.5 mb-0.5 text-center text-[11px]">จุดที่ 2</div>
+                    <div class="whitespace-nowrap"><span class="text-amber-400">T:</span> <span id="val-t2" class="font-mono text-slate-100">--</span></div>
+                    <div class="whitespace-nowrap"><span class="text-blue-400">H:</span> <span id="val-h2" class="font-mono text-slate-100">--</span></div>
+                    <div class="whitespace-nowrap"><span class="text-rose-400">N:</span> <span id="val-n2" class="font-mono text-slate-100">--</span></div>
                 </div>
-            </div>
 
-            <!-- Alert Log -->
-            <div class="bg-slate-800 rounded-xl border border-slate-700 p-4 flex-1 min-h-[150px]">
-                <h2 class="text-sm font-semibold text-emerald-400 mb-2 flex items-center gap-2">
-                    <span>🔔 บันทึกเหตุการณ์</span>
-                    <span id="alertCount" class="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full">0</span>
-                </h2>
-                <div id="alertLog" class="space-y-1 overflow-y-auto hide-scroll max-h-40 text-xs">
-                    <div class="text-slate-500 text-center py-4">ยังไม่มีเหตุการณ์</div>
+                <!-- จุดที่ 3 -->
+                <div id="badge-3" onclick="openChartModal(3)" class="sensor-badge bg-slate-900/90 border-2 border-slate-500 rounded p-1.5 shadow-md text-[10px] leading-tight hover:border-emerald-400" style="top: 44%; left: 52%;">
+                    <div class="font-bold text-emerald-400 border-b border-slate-600 pb-0.5 mb-0.5 text-center text-[11px]">จุดที่ 3</div>
+                    <div class="whitespace-nowrap"><span class="text-amber-400">T:</span> <span id="val-t3" class="font-mono text-slate-100">--</span></div>
+                    <div class="whitespace-nowrap"><span class="text-blue-400">H:</span> <span id="val-h3" class="font-mono text-slate-100">--</span></div>
+                    <div class="whitespace-nowrap"><span class="text-rose-400">N:</span> <span id="val-n3" class="font-mono text-slate-100">--</span></div>
+                </div>
+
+                <!-- จุดที่ 4 -->
+                <div id="badge-4" onclick="openChartModal(4)" class="sensor-badge bg-slate-900/90 border-2 border-slate-500 rounded p-1.5 shadow-md text-[10px] leading-tight hover:border-emerald-400" style="top: 19%; left: 63%;">
+                    <div class="font-bold text-emerald-400 border-b border-slate-600 pb-0.5 mb-0.5 text-center text-[11px]">จุดที่ 4</div>
+                    <div class="whitespace-nowrap"><span class="text-amber-400">T:</span> <span id="val-t4" class="font-mono text-slate-100">--</span></div>
+                    <div class="whitespace-nowrap"><span class="text-blue-400">H:</span> <span id="val-h4" class="font-mono text-slate-100">--</span></div>
+                    <div class="whitespace-nowrap"><span class="text-rose-400">N:</span> <span id="val-n4" class="font-mono text-slate-100">--</span></div>
+                </div>
+
+                <!-- จุดที่ 5 -->
+                <div id="badge-5" onclick="openChartModal(5)" class="sensor-badge bg-slate-900/90 border-2 border-slate-500 rounded p-1.5 shadow-md text-[10px] leading-tight hover:border-emerald-400" style="top: 10%; left: 78%;">
+                    <div class="font-bold text-emerald-400 border-b border-slate-600 pb-0.5 mb-0.5 text-center text-[11px]">จุดที่ 5</div>
+                    <div class="whitespace-nowrap"><span class="text-amber-400">T:</span> <span id="val-t5" class="font-mono text-slate-100">--</span></div>
+                    <div class="whitespace-nowrap"><span class="text-blue-400">H:</span> <span id="val-h5" class="font-mono text-slate-100">--</span></div>
+                    <div class="whitespace-nowrap"><span class="text-rose-400">N:</span> <span id="val-n5" class="font-mono text-slate-100">--</span></div>
                 </div>
             </div>
+        </div>
+    </div>
 
-        </aside>
-    </main>
+    <!-- โครงสร้าง Modal สำหรับแสดงกราฟ -->
+    <div id="chart-modal" class="fixed inset-0 bg-black/80 z-50 hidden flex-col justify-center items-center p-2 md:p-6">
+        <div class="bg-slate-900 border border-slate-600 rounded-xl w-full max-w-4xl p-3 md:p-5 shadow-2xl flex flex-col relative">
+            <div class="flex justify-between items-center mb-3 border-b border-slate-700 pb-2">
+                <h2 id="chart-title" class="text-base md:text-xl font-bold text-emerald-400">Trend History - จุดที่ X</h2>
+                <button onclick="closeChartModal()" class="text-rose-400 hover:text-rose-300 font-bold text-2xl px-2 leading-none">&times;</button>
+            </div>
+            
+            <div class="flex justify-between items-center mb-3">
+                <span id="loading-text" class="text-amber-400 text-xs md:text-sm animate-pulse hidden">⏳ กำลังโหลดข้อมูลจากเซิร์ฟเวอร์...</span>
+                <select id="time-range" onchange="renderChart()" class="bg-slate-800 text-slate-200 border border-slate-600 rounded px-2 py-1 text-xs md:text-sm focus:outline-none focus:border-emerald-500 ml-auto">
+                    <option value="1">1 ชั่วโมงล่าสุด</option>
+                    <option value="6">6 ชั่วโมงล่าสุด</option>
+                    <option value="12">12 ชั่วโมงล่าสุด</option>
+                    <option value="24" selected>24 ชั่วโมงล่าสุด</option>
+                </select>
+            </div>
+
+            <div class="relative w-full h-[250px] md:h-[400px] bg-slate-950 rounded border border-slate-800 p-1">
+                <canvas id="historyChart"></canvas>
+            </div>
+        </div>
+    </div>
 
     <script>
-        // ============================================
-        // 1. MAP DRAG & DROP SYSTEM
-        // ============================================
-        const mapContainer = document.getElementById('mapContainer');
-        const markersLayer = document.getElementById('markersLayer');
-        let isDragging = false;
-        let isMapLocked = false;
-        let startX, startY, offsetX = 0, offsetY = 0;
-        let mapOffsetX = 0, mapOffsetY = 0;
-
-        // สร้าง Markers จำลองตำแหน่งในโรงงาน
-        const stations = [
-            { id: 'S1', name: 'Kiln A',    x: 20, y: 30, color: '#10b981', pm25: 12 },
-            { id: 'S2', name: 'Kiln B',    x: 45, y: 25, color: '#f59e0b', pm25: 38 },
-            { id: 'S3', name: 'Cement Mill', x: 70, y: 40, color: '#ef4444', pm25: 65 },
-            { id: 'S4', name: 'Clinker Cooler', x: 35, y: 65, color: '#10b981', pm25: 15 },
-            { id: 'S5', name: 'Packing Plant', x: 80, y: 70, color: '#f59e0b', pm25: 42 },
-            { id: 'S6', name: 'Raw Mill',  x: 60, y: 15, color: '#10b981', pm25: 8  },
-        ];
-
-        function renderMarkers() {
-            markersLayer.innerHTML = '';
-            stations.forEach(s => {
-                const el = document.createElement('div');
-                el.className = 'marker';
-                el.style.left = s.x + '%';
-                el.style.top = s.y + '%';
-                el.innerHTML = `
-                    <div class="marker-dot" style="color: ${s.color}; background: ${s.color};"></div>
-                    <div class="marker-label">${s.name}<br><span style="color:${s.color}">${s.pm25} µg/m³</span></div>
-                `;
-                el.title = `${s.name} - PM2.5: ${s.pm25} µg/m³`;
-                el.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    addLog(`📍 ${s.name}: PM2.5 = ${s.pm25} µg/m³`, s.pm25 > 50 ? 'red' : 'emerald');
-                });
-                markersLayer.appendChild(el);
-            });
-        }
-        renderMarkers();
-
-        // Drag logic (เฉพาะเมื่อปลดล็อค)
-        mapContainer.addEventListener('mousedown', (e) => {
-            if (isMapLocked) return;
-            isDragging = true;
-            mapContainer.classList.remove('cursor-grab');
-            mapContainer.classList.add('cursor-grabbing');
-            startX = e.clientX - offsetX;
-            startY = e.clientY - offsetY;
-        });
-
-        window.addEventListener('mousemove', (e) => {
-            if (!isDragging) return;
-            e.preventDefault();
-            offsetX = e.clientX - startX;
-            offsetY = e.clientY - startY;
-            // จำกัดการลากไม่ให้หลุดขอบ
-            const maxX = mapContainer.clientWidth * 0.3;
-            const maxY = mapContainer.clientHeight * 0.3;
-            offsetX = Math.max(-maxX, Math.min(maxX, offsetX));
-            offsetY = Math.max(-maxY, Math.min(maxY, offsetY));
-            markersLayer.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
-            document.querySelector('.map-grid').style.transform = `translate(${offsetX*0.5}px, ${offsetY*0.5}px)`;
-        });
-
-        window.addEventListener('mouseup', () => {
-            isDragging = false;
-            mapContainer.classList.add('cursor-grab');
-            mapContainer.classList.remove('cursor-grabbing');
-        });
-
-        // Touch support
-        mapContainer.addEventListener('touchstart', (e) => {
-            if (isMapLocked) return;
-            const touch = e.touches[0];
-            isDragging = true;
-            startX = touch.clientX - offsetX;
-            startY = touch.clientY - offsetY;
-        }, { passive: true });
-
-        mapContainer.addEventListener('touchmove', (e) => {
-            if (!isDragging) return;
-            const touch = e.touches[0];
-            offsetX = touch.clientX - startX;
-            offsetY = touch.clientY - startY;
-            const maxX = mapContainer.clientWidth * 0.3;
-            const maxY = mapContainer.clientHeight * 0.3;
-            offsetX = Math.max(-maxX, Math.min(maxX, offsetX));
-            offsetY = Math.max(-maxY, Math.min(maxY, offsetY));
-            markersLayer.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
-            document.querySelector('.map-grid').style.transform = `translate(${offsetX*0.5}px, ${offsetY*0.5}px)`;
-        }, { passive: true });
-
-        mapContainer.addEventListener('touchend', () => { isDragging = false; });
-
-        function toggleMapDrag() {
-            isMapLocked = !isMapLocked;
-            const btn = document.getElementById('dragBtn');
-            if (isMapLocked) {
-                btn.innerHTML = '🔒 ล็อคแผนที่';
-                btn.classList.add('bg-red-600', 'hover:bg-red-500');
-                btn.classList.remove('bg-slate-700', 'hover:bg-slate-600');
-                mapContainer.classList.remove('cursor-grab');
-            } else {
-                btn.innerHTML = '🔓 ปลดล็อคแผนที่';
-                btn.classList.remove('bg-red-600', 'hover:bg-red-500');
-                btn.classList.add('bg-slate-700', 'hover:bg-slate-600');
-                mapContainer.classList.add('cursor-grab');
-            }
-        }
-
-        // ============================================
-        // 2. MQTT CONNECTION (Simulated)
-        // ============================================
-        let mqttClient = null;
-        const connStatus = document.getElementById('connStatus');
-        const connText = document.getElementById('connText');
-
-        function connectMQTT() {
-            // ใช้ public broker สำหรับ demo
-            const brokerUrl = 'wss://broker.emqx.io:8084/mqtt';
-            const clientId = 'scg_scada_' + Math.random().toString(16).substr(2, 8);
-            
-            try {
-                mqttClient = mqtt.connect(brokerUrl, {
-                    clientId: clientId,
-                    clean: true,
-                    connectTimeout: 5000,
-                    reconnectPeriod: 3000,
-                });
-
-                mqttClient.on('connect', () => {
-                    console.log('MQTT Connected');
-                    connStatus.className = 'w-3 h-3 rounded-full bg-emerald-500';
-                    connText.textContent = 'Connected';
-                    connText.className = 'text-xs text-emerald-400';
-                    mqttClient.subscribe('scg/cement/pm25', { qos: 0 });
-                    addLog('🔗 เชื่อมต่อ MQTT Broker สำเร็จ', 'emerald');
-                });
-
-                mqttClient.on('error', (err) => {
-                    console.warn('MQTT Error:', err);
-                    connStatus.className = 'w-3 h-3 rounded-full bg-red-500';
-                    connText.textContent = 'Error';
-                    connText.className = 'text-xs text-red-400';
-                });
-
-                mqttClient.on('offline', () => {
-                    connStatus.className = 'w-3 h-3 rounded-full bg-yellow-500';
-                    connText.textContent = 'Offline';
-                    connText.className = 'text-xs text-yellow-400';
-                });
-
-                mqttClient.on('message', (topic, payload) => {
-                    try {
-                        const data = JSON.parse(payload.toString());
-                        if (data.pm25 !== undefined) updatePM25(data.pm25);
-                    } catch (e) { /* ignore non-JSON */ }
-                });
-
-            } catch (e) {
-                console.warn('MQTT connection failed, using simulation:', e);
-                startSimulation();
-            }
-        }
-
-        // ============================================
-        // 3. PM2.5 DATA & GAUGE
-        // ============================================
-        const pm25Value = document.getElementById('pm25Value');
-        const pm25Status = document.getElementById('pm25Status');
-        const gaugeArc = document.getElementById('gaugeArc');
-        const pm25Min = document.getElementById('pm25Min');
-        const pm25Max = document.getElementById('pm25Max');
-        const pm25Avg = document.getElementById('pm25Avg');
+        // ==========================================
+        // ระบบซูมและเลื่อนแผนที่ (Zoom & Pan สำหรับ Desktop)
+        // ==========================================
+        let currentMapZoom = 100;
         
-        let pm25History = [];
-        const MAX_HISTORY = 60;
-        const MAX_SCALE = 150;
+        function zoomMap(step) {
+            currentMapZoom += step;
+            if (currentMapZoom < 100) currentMapZoom = 100;
+            if (currentMapZoom > 400) currentMapZoom = 400;
+            document.getElementById('map-container').style.width = currentMapZoom + '%';
+        }
+        
+        function resetZoom() {
+            currentMapZoom = 100;
+            document.getElementById('map-container').style.width = '100%';
+        }
 
-        function updatePM25(value) {
-            value = Math.round(value * 10) / 10;
-            pm25History.push(value);
-            if (pm25History.length > MAX_HISTORY) pm25History.shift();
+        const slider = document.getElementById('map-scroll-wrapper');
+        let isDown = false;
+        let startX, startY, scrollLeft, scrollTop;
 
-            // Update gauge
-            pm25Value.textContent = value.toFixed(1);
-            const pct = Math.min(value / MAX_SCALE, 1);
-            const circumference = 2 * Math.PI * 42; // r=42
-            gaugeArc.style.strokeDashoffset = circumference * (1 - pct * 0.75); // 0.75 = 270 degree arc
+        slider.addEventListener('mousedown', (e) => {
+            isDown = true;
+            slider.classList.add('cursor-grabbing');
+            startX = e.pageX - slider.offsetLeft;
+            startY = e.pageY - slider.offsetTop;
+            scrollLeft = slider.scrollLeft;
+            scrollTop = slider.scrollTop;
+        });
+        slider.addEventListener('mouseleave', () => { isDown = false; slider.classList.remove('cursor-grabbing'); });
+        slider.addEventListener('mouseup', () => { isDown = false; slider.classList.remove('cursor-grabbing'); });
+        slider.addEventListener('mousemove', (e) => {
+            if (!isDown) return;
+            e.preventDefault();
+            const x = e.pageX - slider.offsetLeft;
+            const y = e.pageY - slider.offsetTop;
+            const walkX = (x - startX) * 1.5;
+            const walkY = (y - startY) * 1.5;
+            slider.scrollLeft = scrollLeft - walkX;
+            slider.scrollTop = scrollTop - walkY;
+        });
 
-            // Color based on AQI levels
-            let color, statusText;
-            if (value <= 25) { color = '#10b981'; statusText = 'ดีมาก'; }
-            else if (value <= 50) { color = '#22c55e'; statusText = 'ดี'; }
-            else if (value <= 75) { color = '#f59e0b'; statusText = 'ปานกลาง'; }
-            else if (value <= 100) { color = '#f97316'; statusText = 'เริ่มมีผล'; }
-            else { color = '#ef4444'; statusText = 'อันตราย'; }
+        // ==========================================
+        // ระบบ Chart และ Google Sheets API
+        // ==========================================
+        const script_url = "https://script.google.com/macros/s/AKfycbx_q_ZFWH1iMhb_UZTEq2Ga-XUyj6P1u_Dw6bchAdSkv_M_OWR_oP9TDRfW_v7Phtei/exec";
+        
+        let chartInstance = null;
+        let fetchedData = []; 
+        let currentActiveNode = 1;
+
+        async function openChartModal(nodeId) {
+            currentActiveNode = nodeId;
+            document.getElementById('chart-title').innerText = `Trend History - จุดที่ ${nodeId}`;
+            document.getElementById('chart-modal').classList.remove('hidden');
+            document.getElementById('chart-modal').classList.add('flex');
             
-            gaugeArc.style.stroke = color;
-            pm25Value.style.color = color;
-            pm25Status.textContent = statusText;
-            pm25Status.style.color = color;
+            if(fetchedData.length > 0) { renderChart(); } 
+            else { fetchHistoryData(); }
+        }
 
-            // Stats
-            pm25Min.textContent = Math.min(...pm25History).toFixed(1);
-            pm25Max.textContent = Math.max(...pm25History).toFixed(1);
-            const avg = pm25History.reduce((a, b) => a + b, 0) / pm25History.length;
-            pm25Avg.textContent = avg.toFixed(1);
+        function closeChartModal() {
+            document.getElementById('chart-modal').classList.add('hidden');
+            document.getElementById('chart-modal').classList.remove('flex');
+        }
 
-            // Chart
-            updateChart();
-
-            // Alert if high
-            if (value > 75) {
-                addLog(`⚠️ PM2.5 สูง: ${value.toFixed(1)} µg/m³ (${statusText})`, value > 100 ? 'red' : 'yellow');
+        async function fetchHistoryData() {
+            document.getElementById('loading-text').classList.remove('hidden');
+            try {
+                const response = await fetch(script_url);
+                const data = await response.json();
+                if(data.error || data.length === 0) { alert("ยังไม่มีข้อมูลบันทึกในระบบ"); } 
+                else { fetchedData = data; renderChart(); }
+            } catch (err) {
+                console.error("Fetch Error:", err);
+                alert("ไม่สามารถดึงข้อมูลได้ โปรดตรวจสอบ URL หรืออินเทอร์เน็ต");
             }
-
-            // Update station PM25 (random)
-            updateStationValues(value);
+            document.getElementById('loading-text').classList.add('hidden');
         }
 
-        function updateStationValues(baseValue) {
-            stations.forEach(s => {
-                s.pm25 = Math.max(1, Math.round((baseValue + (Math.random() - 0.5) * 40) * 10) / 10);
-                if (s.pm25 < 0) s.pm25 = 1;
-                let color = s.pm25 <= 25 ? '#10b981' : s.pm25 <= 50 ? '#22c55e' : s.pm25 <= 75 ? '#f59e0b' : s.pm25 <= 100 ? '#f97316' : '#ef4444';
-                s.color = color;
+        function renderChart() {
+            if(!fetchedData || fetchedData.length === 0) return;
+
+            const hours = parseInt(document.getElementById('time-range').value);
+            const now = new Date();
+            
+            const filteredData = fetchedData.filter(row => {
+                const rowTime = new Date(row.time);
+                return (now - rowTime) <= (hours * 60 * 60 * 1000);
             });
-            renderMarkers();
-        }
 
-        // ============================================
-        // 4. CHART
-        // ============================================
-        let chart = null;
-        const chartCanvas = document.getElementById('trendChart');
+            const labels = [], dataT = [], dataH = [], dataN = [];
 
-        function initChart() {
-            const ctx = chartCanvas.getContext('2d');
-            chart = new Chart(ctx, {
+            filteredData.forEach(row => {
+                const d = new Date(row.time);
+                labels.push(d.getHours().toString().padStart(2, '0') + ':' + d.getMinutes().toString().padStart(2, '0'));
+                
+                let valT = row['t' + currentActiveNode];
+                let valH = row['h' + currentActiveNode];
+                let valN = row['n' + currentActiveNode];
+
+                dataT.push(valT === -99 ? null : valT);
+                dataH.push(valH === -99 ? null : valH);
+                dataN.push(valN === -99 ? null : valN);
+            });
+
+            if (chartInstance) chartInstance.destroy();
+            const ctx = document.getElementById('historyChart').getContext('2d');
+            
+            chartInstance = new Chart(ctx, {
                 type: 'line',
                 data: {
-                    labels: [],
-                    datasets: [{
-                        label: 'PM2.5 (µg/m³)',
-                        data: [],
-                        borderColor: '#10b981',
-                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                        borderWidth: 2,
-                        fill: true,
-                        tension: 0.4,
-                        pointRadius: 0,
-                    }]
+                    labels: labels,
+                    datasets: [
+                        { label: 'อุณหภูมิ (°C)', data: dataT, borderColor: '#fbbf24', backgroundColor: 'rgba(251,191,36,0.1)', yAxisID: 'y', tension: 0.3, pointRadius: 1 },
+                        { label: 'ความชื้น (%)', data: dataH, borderColor: '#60a5fa', backgroundColor: 'rgba(96,165,250,0.1)', yAxisID: 'y', tension: 0.3, pointRadius: 1 },
+                        { label: 'เสียง (dB)', data: dataN, borderColor: '#fb7185', backgroundColor: 'rgba(251,113,133,0.1)', yAxisID: 'y1', tension: 0.3, pointRadius: 1 }
+                    ]
                 },
                 options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    animation: false,
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            backgroundColor: '#1e293b',
-                            titleColor: '#e2e8f0',
-                            bodyColor: '#e2e8f0',
-                            borderColor: '#334155',
-                            borderWidth: 1,
-                        }
-                    },
+                    responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+                    plugins: { legend: { labels: { color: '#cbd5e1', font: { size: 10 } } } },
                     scales: {
-                        x: { display: false },
-                        y: {
-                            beginAtZero: true,
-                            max: MAX_SCALE,
-                            grid: { color: 'rgba(51, 65, 85, 0.3)' },
-                            ticks: { color: '#64748b', font: { size: 10 } }
-                        }
+                        x: { ticks: { color: '#94a3b8', maxTicksLimit: 12 }, grid: { color: '#334155' } },
+                        y: { type: 'linear', display: true, position: 'left', min: 0, max: 100, ticks: { color: '#cbd5e1' }, grid: { color: '#334155' }, title: { display: true, text: '°C / %', color: '#cbd5e1' } },
+                        y1: { type: 'linear', display: true, position: 'right', min: 30, max: 120, ticks: { color: '#fb7185' }, grid: { drawOnChartArea: false }, title: { display: true, text: 'dB', color: '#fb7185' } }
                     }
                 }
             });
         }
 
-        function updateChart() {
-            if (!chart) return;
-            const now = new Date();
-            const labels = pm25History.map((_, i) => {
-                const t = new Date(now.getTime() - (pm25History.length - 1 - i) * 1000);
-                return t.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-            });
-            chart.data.labels = labels;
-            chart.data.datasets[0].data = pm25History;
-            
-            // Dynamic color for chart
-            const last = pm25History[pm25History.length - 1] || 0;
-            chart.data.datasets[0].borderColor = last <= 50 ? '#10b981' : last <= 100 ? '#f59e0b' : '#ef4444';
-            chart.data.datasets[0].backgroundColor = last <= 50 ? 'rgba(16,185,129,0.1)' : last <= 100 ? 'rgba(245,158,11,0.1)' : 'rgba(239,68,68,0.1)';
-            
-            chart.update('none');
-        }
+        // ==========================================
+        // ระบบ MQTT และเสียงเตือน (เฉพาะ Noise)
+        // ==========================================
+        let audioCtx, isAudioEnabled = false, alarmInterval = null;
+        let dataTimeout = null;
 
-        // ============================================
-        // 5. ALERT LOG
-        // ============================================
-        const alertLog = document.getElementById('alertLog');
-        const alertCount = document.getElementById('alertCount');
-        let alertTotal = 0;
-
-        function addLog(message, type = 'emerald') {
-            alertTotal++;
-            alertCount.textContent = alertTotal;
-
-            if (alertLog.querySelector('.text-slate-500')) alertLog.innerHTML = '';
-
-            const colors = {
-                emerald: 'text-emerald-400 border-emerald-500/30',
-                yellow: 'text-yellow-400 border-yellow-500/30',
-                red: 'text-red-400 border-red-500/30',
-            };
-            const div = document.createElement('div');
-            div.className = `log-entry border-l-2 pl-2 py-1 ${colors[type] || colors.emerald}`;
-            const time = new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-            div.innerHTML = `<span class="text-slate-500">[${time}]</span> ${message}`;
-            alertLog.prepend(div);
-
-            // Keep only last 20
-            while (alertLog.children.length > 20) {
-                alertLog.removeChild(alertLog.lastChild);
+        function toggleAudio() {
+            const btnMobile = document.getElementById('btn-audio');
+            const btnDesktop = document.getElementById('btn-audio-desktop');
+            if (!isAudioEnabled) {
+                if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                isAudioEnabled = true;
+                const onStyle = 'bg-emerald-600 text-white border-emerald-400';
+                btnMobile.innerHTML = '🔊 เสียงทำงาน'; btnMobile.className = `md:hidden px-2 py-1 text-[9px] font-bold rounded border shadow ${onStyle}`;
+                btnDesktop.innerHTML = '🔊 เสียงทำงาน'; btnDesktop.className = `hidden md:flex px-3 py-1.5 text-xs font-bold rounded border items-center gap-1 ${onStyle}`;
+            } else {
+                isAudioEnabled = false; stopSiren();
+                const redStyle = 'bg-rose-600 text-white border-rose-400';
+                btnMobile.innerHTML = '🔇 เปิดเสียง'; btnMobile.className = `md:hidden px-2 py-1 text-[9px] font-bold rounded border shadow ${redStyle}`;
+                btnDesktop.innerHTML = '🔇 ระบบเสียงปิดอยู่'; btnDesktop.className = `hidden md:flex px-3 py-1.5 hover:bg-rose-500 text-xs font-bold rounded border items-center gap-1 ${redStyle}`;
             }
         }
 
-        // ============================================
-        // 6. SIMULATION MODE
-        // ============================================
-        function startSimulation() {
-            addLog('⚙️ โหมดจำลองข้อมูล (MQTT ไม่พร้อมใช้งาน)', 'yellow');
-            let base = 40 + Math.random() * 20;
-            setInterval(() => {
-                // Smooth random walk
-                base += (Math.random() - 0.5) * 10;
-                base = Math.max(5, Math.min(120, base));
-                const value = base + (Math.random() - 0.5) * 5;
-                updatePM25(value);
-                
-                // Publish ถ้ามี MQTT
-                if (mqttClient && mqttClient.connected) {
-                    mqttClient.publish('scg/cement/pm25', JSON.stringify({ pm25: Math.round(value * 10) / 10, ts: Date.now() }));
-                }
-            }, 2000);
-
-            // Initial value
-            updatePM25(base);
+        function playSirenSound() {
+            if (!isAudioEnabled || !audioCtx) return;
+            const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(800, audioCtx.currentTime); osc.frequency.setValueAtTime(1000, audioCtx.currentTime + 0.25);
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+            osc.connect(gain); gain.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime + 0.5);
         }
 
-        // ============================================
-        // 7. CLOCK
-        // ============================================
-        function updateClock() {
-            document.getElementById('clock').textContent = new Date().toLocaleTimeString('th-TH');
+        function triggerAlarm(shouldAlarm) {
+            if (shouldAlarm) { if (!alarmInterval) alarmInterval = setInterval(playSirenSound, 600); } 
+            else { stopSiren(); }
         }
-        setInterval(updateClock, 1000);
-        updateClock();
+        function stopSiren() { if (alarmInterval) { clearInterval(alarmInterval); alarmInterval = null; } }
 
-        // ============================================
-        // 8. INITIALIZE
-        // ============================================
-        window.addEventListener('load', () => {
-            initChart();
-            connectMQTT();
+        function clearStaleData() {
+            const statusEl = document.getElementById('connection-status');
+            statusEl.innerHTML = '🟠 Stale Data (No Update)'; 
+            statusEl.className = 'text-[9px] md:text-sm text-amber-400 mt-0.5 font-bold animate-pulse';
             
-            // Fallback simulation หลัง 3 วินาทีถ้า MQTT ไม่ต่อ
-            setTimeout(() => {
-                if (!mqttClient || !mqttClient.connected) {
-                    if (!window._simStarted) {
-                        window._simStarted = true;
-                        startSimulation();
-                    }
-                }
-            }, 3000);
+            for(let i = 1; i <= 5; i++) {
+                let badge = document.getElementById('badge-'+i);
+                document.getElementById('val-t'+i).textContent = '--';
+                document.getElementById('val-h'+i).textContent = '--';
+                document.getElementById('val-n'+i).textContent = '--';
+                
+                document.getElementById('val-n'+i).classList.remove('alarm-text');
+                badge.classList.remove('alarm-active');
+                badge.classList.add('bg-slate-900/90', 'border-slate-500');
+            }
+            stopSiren();
+        }
 
-            // Add initial log
-            addLog('🚀 เริ่มต้นระบบ SCADA', 'emerald');
+        const brokerUrl = 'wss://da20fee687434cce93e355ebceb7da00.s2.eu.hivemq.cloud:8884/mqtt';
+        const topic = 'scg/cement/environment_monitoring/#';
+        const options = { clientId: 'scada_web_' + Math.random().toString(16).substring(2, 8), username: 'esp32_sensorMonitor', password: 'Mcl195088', clean: true };
+        const client = mqtt.connect(brokerUrl, options);
+        const statusEl = document.getElementById('connection-status');
+
+        client.on('connect', () => { 
+            statusEl.innerHTML = '🟢 Connected'; 
+            statusEl.className = 'text-[9px] md:text-sm text-emerald-400 mt-0.5 font-bold'; 
+            client.subscribe(topic); 
+        });
+        
+        client.on('error', () => { 
+            statusEl.innerHTML = '🔴 Error'; 
+            statusEl.className = 'text-[9px] md:text-sm text-red-400 mt-0.5 font-bold'; 
+            clearStaleData();
         });
 
-        // Handle resize
-        window.addEventListener('resize', () => {
-            if (chart) chart.resize();
+        client.on('message', (t, payload) => {
+            if (t.includes('scg/cement/environment_monitoring')) {
+                try {
+                    if (dataTimeout) {
+                        clearTimeout(dataTimeout);
+                    }
+                    dataTimeout = setTimeout(clearStaleData, 15000);
+
+                    statusEl.innerHTML = '🟢 Connected (Live)'; 
+                    statusEl.className = 'text-[9px] md:text-sm text-emerald-400 mt-0.5 font-bold';
+
+                    const data = JSON.parse(payload.toString());
+                    const limitN = parseFloat(document.getElementById('limit-noise').value) || 999;
+                    let isAnyPointAlarming = false;
+                    
+                    for(let i = 1; i <= 5; i++) {
+                        let hasAlarm = false; 
+                        let badge = document.getElementById('badge-'+i);
+                        let valT = data['t'+i], valH = data['h'+i], valN = data['n'+i];
+
+                        // แสดงผล T และ H ตามปกติ (ไม่มีระบบ Alarm)
+                        let elT = document.getElementById('val-t'+i);
+                        elT.textContent = (valT !== undefined && valT !== -99) ? valT.toFixed(1) : '--';
+
+                        let elH = document.getElementById('val-h'+i);
+                        elH.textContent = (valH !== undefined && valH !== -99) ? valH.toFixed(1) : '--';
+                        
+                        // เช็คเงื่อนไข Alarm เฉพาะค่าเสียง (Noise)
+                        let elN = document.getElementById('val-n'+i);
+                        if (valN !== undefined && valN !== -99) { 
+                            elN.textContent = valN.toFixed(1); 
+                            if(valN > limitN) { 
+                                hasAlarm = true; 
+                                elN.classList.add('alarm-text'); 
+                            } else {
+                                elN.classList.remove('alarm-text'); 
+                            }
+                        } else {
+                            elN.textContent = '--';
+                            elN.classList.remove('alarm-text');
+                        }
+
+                        if (hasAlarm) { 
+                            badge.classList.add('alarm-active'); 
+                            badge.classList.remove('bg-slate-900/90', 'border-slate-500'); 
+                            isAnyPointAlarming = true; 
+                        } else { 
+                            badge.classList.remove('alarm-active'); 
+                            badge.classList.add('bg-slate-900/90', 'border-slate-500'); 
+                        }
+                    }
+                    triggerAlarm(isAnyPointAlarming);
+                } catch (e) { console.error('Parse JSON error:', e); }
+            }
         });
     </script>
 </body>
