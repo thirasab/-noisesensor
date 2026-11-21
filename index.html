@@ -58,7 +58,6 @@
         .alarm-text { color: #fca5a5 !important; font-weight: bold; }
         .warn-text { color: #fbbf24 !important; font-weight: bold; }
 
-        /* ปุ่ม ack มุมขวาบน */
         .ack-btn {
             position: absolute;
             top: -6px; right: -6px;
@@ -74,10 +73,7 @@
         .ack-btn.warn { background: #f59e0b; color: #1c1917; }
         .ack-btn.crit { background: #ef4444; color: white; }
 
-        /* ===== Timestamp overlay: desktop hover only ===== */
-        .badge-ts {
-            display: none;
-        }
+        .badge-ts { display: none; }
         @media (min-width: 768px) {
             .badge-ts {
                 display: block;
@@ -126,21 +122,27 @@
                     <h1 class="text-sm md:text-xl font-bold text-emerald-400 tracking-wide">SCG CEMENT</h1>
                     <p class="text-[9px] md:text-sm mt-0.5" id="connection-status" aria-live="polite">🟡 Connecting...</p>
                 </div>
-                <button type="button" id="btn-audio" onclick="app.toggleAudio()"
-                    class="md:hidden px-3 py-1.5 bg-rose-600 text-white text-[10px] font-bold rounded border border-rose-400 shadow min-h-[32px]">
-                    🔇 เปิดเสียง
-                </button>
+                <div class="flex items-center gap-1.5 md:hidden">
+                    <button type="button" onclick="app.toggleCalibPanel()"
+                        class="px-2.5 py-1.5 bg-slate-700 text-emerald-300 text-[10px] font-bold rounded border border-slate-500 min-h-[32px]">
+                        🎛️ ชดเชย
+                    </button>
+                    <button type="button" id="btn-audio" onclick="app.toggleAudio()"
+                        class="px-3 py-1.5 bg-rose-600 text-white text-[10px] font-bold rounded border border-rose-400 shadow min-h-[32px]">
+                        🔇 เปิดเสียง
+                    </button>
+                </div>
             </div>
 
             <div class="flex justify-center md:justify-start bg-slate-800 p-1.5 rounded border border-slate-600">
                 <div class="flex flex-row items-center justify-center gap-3 w-full md:w-auto px-2">
                     <div class="flex flex-col items-center">
-                        <label for="limit-warn" class="text-[9px] md:text-[10px] font-bold text-amber-400">⚠️ Warn (dB)</label>
+                        <label for="limit-warn" class="text-[9px] md:text-[10px] font-bold text-amber-400">⚠️ Warn (dBA)</label>
                         <input type="number" id="limit-warn" min="30" max="150" step="1" value="85"
                             class="w-16 bg-slate-900 border border-slate-500 rounded px-1 py-0.5 text-xs text-center focus:outline-none focus:border-amber-400">
                     </div>
                     <div class="flex flex-col items-center">
-                        <label for="limit-crit" class="text-[9px] md:text-[10px] font-bold text-rose-400">🚨 Crit (dB)</label>
+                        <label for="limit-crit" class="text-[9px] md:text-[10px] font-bold text-rose-400">🚨 Crit (dBA)</label>
                         <input type="number" id="limit-crit" min="30" max="150" step="1" value="95"
                             class="w-16 bg-slate-900 border border-slate-500 rounded px-1 py-0.5 text-xs text-center focus:outline-none focus:border-rose-400">
                     </div>
@@ -152,6 +154,10 @@
             </div>
 
             <div class="hidden md:flex items-center gap-2">
+                <button type="button" onclick="app.toggleCalibPanel()" title="ตั้งค่าชดเชย dBA"
+                    class="px-2.5 py-1.5 bg-slate-700 hover:bg-slate-600 text-emerald-300 text-xs font-bold rounded border border-slate-500 min-h-[32px]">
+                    🎛️ ชดเชย dBA
+                </button>
                 <button type="button" onclick="app.testSiren()" title="ทดสอบเสียง"
                     class="px-2 py-1.5 bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold rounded border border-slate-500 min-h-[32px]">
                     🔔
@@ -162,10 +168,41 @@
                 </button>
             </div>
         </div>
+
+        <!-- แถบตั้งค่าชดเชย Offset dBA แยกจุดที่ 1-5 (ซ่อนอยู่จนกว่าจะกดปุ่ม ชดเชย dBA) -->
+        <div id="calib-panel" class="hidden mt-2 pt-2 border-t border-slate-700">
+            <div class="flex flex-wrap items-center justify-center gap-2 bg-slate-800/90 p-2 rounded border border-slate-600">
+                <span class="text-[10px] md:text-xs font-bold text-emerald-400 w-full md:w-auto text-center">🎛️ Offset ชดเชย (dBA):</span>
+                <div class="flex items-center gap-1">
+                    <label for="off-1" class="text-[10px] text-slate-300">จุด 1:</label>
+                    <input type="number" id="off-1" step="0.1" min="-30" max="30" value="0" class="w-14 bg-slate-900 border border-slate-500 rounded px-1 py-0.5 text-xs text-center font-mono focus:border-emerald-400 focus:outline-none">
+                </div>
+                <div class="flex items-center gap-1">
+                    <label for="off-2" class="text-[10px] text-slate-300">จุด 2:</label>
+                    <input type="number" id="off-2" step="0.1" min="-30" max="30" value="0" class="w-14 bg-slate-900 border border-slate-500 rounded px-1 py-0.5 text-xs text-center font-mono focus:border-emerald-400 focus:outline-none">
+                </div>
+                <div class="flex items-center gap-1">
+                    <label for="off-3" class="text-[10px] text-slate-300">จุด 3:</label>
+                    <input type="number" id="off-3" step="0.1" min="-30" max="30" value="0" class="w-14 bg-slate-900 border border-slate-500 rounded px-1 py-0.5 text-xs text-center font-mono focus:border-emerald-400 focus:outline-none">
+                </div>
+                <div class="flex items-center gap-1">
+                    <label for="off-4" class="text-[10px] text-slate-300">จุด 4:</label>
+                    <input type="number" id="off-4" step="0.1" min="-30" max="30" value="0" class="w-14 bg-slate-900 border border-slate-500 rounded px-1 py-0.5 text-xs text-center font-mono focus:border-emerald-400 focus:outline-none">
+                </div>
+                <div class="flex items-center gap-1">
+                    <label for="off-5" class="text-[10px] text-slate-300">จุด 5:</label>
+                    <input type="number" id="off-5" step="0.1" min="-30" max="30" value="0" class="w-14 bg-slate-900 border border-slate-500 rounded px-1 py-0.5 text-xs text-center font-mono focus:border-emerald-400 focus:outline-none">
+                </div>
+                <button type="button" onclick="app.saveCalibration()"
+                    class="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded border border-emerald-400">
+                    💾 บันทึกชดเชย
+                </button>
+            </div>
+        </div>
     </header>
 
     <div class="text-center text-[9px] md:text-xs text-slate-400 mb-1">
-        👆 แตะการ์ดเพื่อดูกราฟ | 💻 ปุ่มซูม/ลากเมาส์ | ⚠️ Warning | 🚨 Critical | ✕ รับทราบ
+        👆 แตะการ์ดเพื่อดูกราฟ (dBA) | 💻 ปุ่มซูม/ลากเมาส์ | ⚠️ Warning | 🚨 Critical | ✕ รับทราบ
     </div>
 
     <div id="toast-container" class="fixed top-4 right-4 z-[60] flex flex-col gap-2 pointer-events-none"></div>
@@ -316,7 +353,8 @@
                 criticalActive: false,
                 mapZoom: 100,
                 saveAlarmTimer: null,
-                syncingAlarm: false
+                syncingAlarm: false,
+                offsets: [0, 0, 0, 0, 0, 0] // Index 1-5
             };
 
             this.init();
@@ -338,6 +376,7 @@
             this.refs.limitWarn       = document.getElementById('limit-warn');
             this.refs.limitCrit       = document.getElementById('limit-crit');
             this.refs.alarmSyncStatus = document.getElementById('alarm-sync-status');
+            this.refs.calibPanel      = document.getElementById('calib-panel');
             this.refs.mapContainer    = document.getElementById('map-container');
             this.refs.mapScroll       = document.getElementById('map-scroll-wrapper');
             this.refs.modal           = document.getElementById('chart-modal');
@@ -353,6 +392,7 @@
             this.refs.valsN      = [];
             this.refs.timestamps = [];
             this.refs.ackBtns    = [];
+            this.refs.offInputs  = [];
 
             for (let i = 1; i <= this.config.NODE_COUNT; i++) {
                 this.refs.badges[i]     = document.getElementById('badge-' + i);
@@ -360,9 +400,14 @@
                 this.refs.valsH[i]      = document.getElementById('val-h' + i);
                 this.refs.valsN[i]      = document.getElementById('val-n' + i);
                 this.refs.timestamps[i] = document.getElementById('ts-' + i);
+                this.refs.offInputs[i]  = document.getElementById('off-' + i);
                 const badge = this.refs.badges[i];
                 this.refs.ackBtns[i] = badge ? badge.querySelector('.ack-btn') : null;
             }
+        }
+
+        toggleCalibPanel() {
+            this.refs.calibPanel.classList.toggle('hidden');
         }
 
         // ---------- SAFE NUMBER PARSER ----------
@@ -443,12 +488,20 @@
             this.showToast('🔔 ทดสอบเสียง', 'info');
         }
 
-        // ---------- ALARM LIMITS + GOOGLE SHEET SYNC ----------
+        // ---------- ALARM LIMITS & CALIBRATION OFFSETS + GOOGLE SHEET SYNC ----------
         setupAlarmLimits() {
             const savedWarn = this.parseSensorNumber(localStorage.getItem('scada_limit_warn'));
             const savedCrit = this.parseSensorNumber(localStorage.getItem('scada_limit_crit'));
             if (savedWarn !== null) this.refs.limitWarn.value = savedWarn;
             if (savedCrit !== null) this.refs.limitCrit.value = savedCrit;
+
+            for (let i = 1; i <= this.config.NODE_COUNT; i++) {
+                const savedOff = this.parseSensorNumber(localStorage.getItem('scada_offset_' + i));
+                if (savedOff !== null) {
+                    this.state.offsets[i] = savedOff;
+                    if (this.refs.offInputs[i]) this.refs.offInputs[i].value = savedOff;
+                }
+            }
 
             const onUserChange = () => {
                 const { warn, crit } = this.getLimits();
@@ -462,25 +515,42 @@
                     this.renderChart();
                 }
 
-                // หน่วง 500ms ก่อนยิงลง Sheet กันส่งถี่ตอนกดลูกศรขึ้น/ลง
                 if (this.state.saveAlarmTimer) clearTimeout(this.state.saveAlarmTimer);
                 this.refs.alarmSyncStatus.textContent = '⏳';
                 this.state.saveAlarmTimer = setTimeout(() => {
-                    this.saveAlarmLimitsToSheet(warn, crit);
+                    this.saveConfigToSheet(warn, crit);
                 }, 500);
             };
 
             this.refs.limitWarn.addEventListener('change', onUserChange);
             this.refs.limitCrit.addEventListener('change', onUserChange);
 
-            // ดึงค่าจาก Google Sheet ตอนเปิดหน้าเว็บ + ซิงก์อัตโนมัติทุก 30 วินาที
             this.fetchAlarmLimitsFromSheet(true);
             setInterval(() => {
                 const activeEl = document.activeElement;
                 if (activeEl === this.refs.limitWarn || activeEl === this.refs.limitCrit) return;
+                if (this.refs.offInputs.includes(activeEl)) return;
                 if (this.state.saveAlarmTimer) return;
                 this.fetchAlarmLimitsFromSheet(false);
             }, this.config.ALARM_SYNC_MS);
+        }
+
+        saveCalibration() {
+            for (let i = 1; i <= this.config.NODE_COUNT; i++) {
+                let val = this.parseSensorNumber(this.refs.offInputs[i].value);
+                if (val === null) val = 0;
+                val = Math.max(-30, Math.min(30, val));
+                this.refs.offInputs[i].value = val;
+                this.state.offsets[i] = val;
+                localStorage.setItem('scada_offset_' + i, String(val));
+            }
+
+            // อัปเดตการแสดงผลบนแผนที่ทันที
+            if (this.state.lastData) this.applyData(this.state.lastData);
+
+            const { warn, crit } = this.getLimits();
+            if (this.state.saveAlarmTimer) clearTimeout(this.state.saveAlarmTimer);
+            this.saveConfigToSheet(warn, crit);
         }
 
         async fetchAlarmLimitsFromSheet(isInitial = false) {
@@ -497,38 +567,51 @@
 
                 const remoteWarn = this.parseSensorNumber(data.warn);
                 const remoteCrit = this.parseSensorNumber(data.crit);
+                let changed = false;
+
                 if (remoteWarn !== null && remoteCrit !== null) {
                     const currentWarn = Number(this.refs.limitWarn.value);
                     const currentCrit = Number(this.refs.limitCrit.value);
-                    const changed = currentWarn !== remoteWarn || currentCrit !== remoteCrit;
+                    if (currentWarn !== remoteWarn || currentCrit !== remoteCrit) changed = true;
 
                     this.refs.limitWarn.value = remoteWarn;
                     this.refs.limitCrit.value = remoteCrit;
                     localStorage.setItem('scada_limit_warn', String(remoteWarn));
                     localStorage.setItem('scada_limit_crit', String(remoteCrit));
+                }
 
-                    if (changed) {
-                        if (this.state.lastData) this.applyData(this.state.lastData);
-                        if (this.state.chart && !this.refs.modal.classList.contains('hidden')) {
-                            this.renderChart();
-                        }
-                        if (!isInitial) {
-                            this.showToast(`🔄 ซิงก์ Alarm จาก Sheet (${remoteWarn}/${remoteCrit} dB)`, 'info');
-                        }
+                for (let i = 1; i <= this.config.NODE_COUNT; i++) {
+                    const remoteOff = this.parseSensorNumber(data['off' + i]);
+                    if (remoteOff !== null && this.state.offsets[i] !== remoteOff) {
+                        this.state.offsets[i] = remoteOff;
+                        if (this.refs.offInputs[i]) this.refs.offInputs[i].value = remoteOff;
+                        localStorage.setItem('scada_offset_' + i, String(remoteOff));
+                        changed = true;
                     }
                 }
+
+                if (changed) {
+                    if (this.state.lastData) this.applyData(this.state.lastData);
+                    if (this.state.chart && !this.refs.modal.classList.contains('hidden')) {
+                        this.renderChart();
+                    }
+                    if (!isInitial) {
+                        this.showToast(`🔄 ซิงก์ค่าตั้งและชดเชย dBA จาก Sheet แล้ว`, 'info');
+                    }
+                }
+
                 this.refs.alarmSyncStatus.textContent = '☁️';
                 this.refs.alarmSyncStatus.title = 'ซิงก์กับ Google Sheet แล้ว';
             } catch (err) {
                 console.error('Fetch Alarm Config Error:', err);
                 this.refs.alarmSyncStatus.textContent = '⚠️';
-                this.refs.alarmSyncStatus.title = 'ดึงค่า Alarm จาก Sheet ไม่สำเร็จ';
+                this.refs.alarmSyncStatus.title = 'ดึงค่าจาก Sheet ไม่สำเร็จ';
             } finally {
                 this.state.syncingAlarm = false;
             }
         }
 
-        async saveAlarmLimitsToSheet(warn, crit) {
+        async saveConfigToSheet(warn, crit) {
             this.state.saveAlarmTimer = null;
             this.state.syncingAlarm = true;
             this.refs.alarmSyncStatus.textContent = '⏳';
@@ -541,7 +624,12 @@
                     body: JSON.stringify({
                         action: 'setAlarm',
                         warn: warn,
-                        crit: crit
+                        crit: crit,
+                        off1: this.state.offsets[1],
+                        off2: this.state.offsets[2],
+                        off3: this.state.offsets[3],
+                        off4: this.state.offsets[4],
+                        off5: this.state.offsets[5]
                     }),
                     signal: controller.signal
                 });
@@ -551,15 +639,15 @@
                 if (result && result.status === 'ok') {
                     this.refs.alarmSyncStatus.textContent = '☁️';
                     this.refs.alarmSyncStatus.title = 'บันทึกลง Google Sheet แล้ว';
-                    this.showToast(`☁️ บันทึก Alarm (${warn}/${crit} dB) ลง Sheet แล้ว`, 'success');
+                    this.showToast(`☁️ บันทึกเกณฑ์ (${warn}/${crit} dBA) และค่าชดเชยลง Sheet แล้ว`, 'success');
                 } else {
                     throw new Error('Invalid response');
                 }
             } catch (err) {
-                console.error('Save Alarm Config Error:', err);
+                console.error('Save Config Error:', err);
                 this.refs.alarmSyncStatus.textContent = '⚠️';
                 this.refs.alarmSyncStatus.title = 'บันทึกไม่สำเร็จ';
-                this.showToast('⚠️ บันทึกค่า Alarm ลง Sheet ไม่สำเร็จ', 'error');
+                this.showToast('⚠️ บันทึกลง Sheet ไม่สำเร็จ', 'error');
             } finally {
                 this.state.syncingAlarm = false;
             }
@@ -682,7 +770,9 @@
                 try {
                     const data = JSON.parse(payload.toString());
                     if (!data || typeof data !== 'object') return;
-                    this.queueUpdate(data);
+                    // รวมข้อมูลจาก Node 1 และ Node 2 ไว้ใน lastData เดียวกัน
+                    const merged = Object.assign({}, this.state.lastData || {}, data);
+                    this.queueUpdate(merged);
                     this.updateStatus('🟢 Connected (Live)', 'emerald');
                     if (this.state.dataTimeout) clearTimeout(this.state.dataTimeout);
                     this.state.dataTimeout = setTimeout(() => this.clearStaleData(), this.config.STALE_MS);
@@ -724,7 +814,15 @@
             for (let i = 1; i <= this.config.NODE_COUNT; i++) {
                 const valT = this.parseSensorNumber(data['t' + i]);
                 const valH = this.parseSensorNumber(data['h' + i]);
-                const valN = this.parseSensorNumber(data['n' + i]);
+                const rawOrCompN = this.parseSensorNumber(data['n' + i]);
+
+                // คำนวณค่าชดเชย dBA โดยหักค่า offset ที่ ESP32 บวกมาแล้วออกก่อน แล้วบวกค่า offset ล่าสุดบน Web (ป้องกันการบวกซ้ำซ้อน)
+                let valN = null;
+                if (rawOrCompN !== null) {
+                    const espAppliedOff = this.parseSensorNumber(data['off' + i]) ?? 0;
+                    const webTargetOff = this.state.offsets[i] ?? 0;
+                    valN = Math.max(30, Math.min(130, rawOrCompN - espAppliedOff + webTargetOff));
+                }
 
                 this.refs.valsT[i].textContent = valT !== null ? valT.toFixed(1) : '--';
                 this.refs.valsH[i].textContent = valH !== null ? valH.toFixed(1) : '--';
@@ -779,7 +877,7 @@
             this.triggerAlarm(anyCriticalUnacked);
 
             if (anyCriticalUnacked && !this.state.criticalActive) {
-                this.showToast('🚨 ALARM: ค่าเสียงเกิน Critical!', 'error');
+                this.showToast('🚨 ALARM: ค่าเสียงเกิน Critical (dBA)!', 'error');
             }
             this.state.criticalActive = anyCriticalUnacked;
         }
@@ -900,9 +998,9 @@
                 this.state.chart.data.datasets[0].data = dataT;
                 this.state.chart.data.datasets[1].data = dataH;
                 this.state.chart.data.datasets[2].data = dataN;
-                this.state.chart.data.datasets[3].label = `Warn (${warn} dB)`;
+                this.state.chart.data.datasets[3].label = `Warn (${warn} dBA)`;
                 this.state.chart.data.datasets[3].data = warnLine;
-                this.state.chart.data.datasets[4].label = `Crit (${crit} dB)`;
+                this.state.chart.data.datasets[4].label = `Crit (${crit} dBA)`;
                 this.state.chart.data.datasets[4].data = critLine;
                 this.state.chart.update('none');
             } else {
@@ -914,9 +1012,9 @@
                         datasets: [
                             { label: 'อุณหภูมิ (°C)', data: dataT, borderColor: '#fbbf24', backgroundColor: 'rgba(251,191,36,0.1)',  yAxisID: 'y',  tension: 0.3, pointRadius: 1 },
                             { label: 'ความชื้น (%)',  data: dataH, borderColor: '#60a5fa', backgroundColor: 'rgba(96,165,250,0.1)',  yAxisID: 'y',  tension: 0.3, pointRadius: 1 },
-                            { label: 'เสียง (dB)',    data: dataN, borderColor: '#fb7185', backgroundColor: 'rgba(251,113,133,0.1)', yAxisID: 'y1', tension: 0.3, pointRadius: 1 },
-                            { label: `Warn (${warn} dB)`, data: warnLine, borderColor: '#f59e0b', borderDash: [6, 4], borderWidth: 1.5, pointRadius: 0, fill: false, yAxisID: 'y1' },
-                            { label: `Crit (${crit} dB)`, data: critLine, borderColor: '#ef4444', borderDash: [3, 3], borderWidth: 1.5, pointRadius: 0, fill: false, yAxisID: 'y1' }
+                            { label: 'เสียง (dBA)',   data: dataN, borderColor: '#fb7185', backgroundColor: 'rgba(251,113,133,0.1)', yAxisID: 'y1', tension: 0.3, pointRadius: 1 },
+                            { label: `Warn (${warn} dBA)`, data: warnLine, borderColor: '#f59e0b', borderDash: [6, 4], borderWidth: 1.5, pointRadius: 0, fill: false, yAxisID: 'y1' },
+                            { label: `Crit (${crit} dBA)`, data: critLine, borderColor: '#ef4444', borderDash: [3, 3], borderWidth: 1.5, pointRadius: 0, fill: false, yAxisID: 'y1' }
                         ]
                     },
                     options: {
@@ -927,7 +1025,7 @@
                         scales: {
                             x:  { ticks: { color: '#94a3b8', maxTicksLimit: 12 }, grid: { color: '#334155' } },
                             y:  { type: 'linear', position: 'left',  min: 0, max: 100, ticks: { color: '#cbd5e1' }, grid: { color: '#334155' }, title: { display: true, text: '°C / %', color: '#cbd5e1' } },
-                            y1: { type: 'linear', position: 'right', min: 30, max: 130, ticks: { color: '#fb7185' }, grid: { drawOnChartArea: false }, title: { display: true, text: 'dB', color: '#fb7185' } }
+                            y1: { type: 'linear', position: 'right', min: 30, max: 130, ticks: { color: '#fb7185' }, grid: { drawOnChartArea: false }, title: { display: true, text: 'dBA', color: '#fb7185' } }
                         }
                     }
                 });
