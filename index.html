@@ -20,7 +20,7 @@
             -webkit-overflow-scrolling: touch;
         }
 
-        /* ล็อกให้กล่องแผนที่มีขนาดเท่ากับรูปภาพเป๊ะ ห้ามยืดความสูงตาม Flexbox */
+        /* ตัด transition: width ออก เพื่อให้ความกว้างภาพ การ์ด และ scroll อัปเดตพร้อมกันในเฟรมเดียว */
         .map-container {
             position: relative;
             display: block;
@@ -29,10 +29,6 @@
             margin: auto;
             line-height: 0;
             --badge-scale: 0.85;
-            transition: width 0.2s ease-out;
-        }
-        .map-container.is-pinching {
-            transition: none !important;
         }
 
         /* ===== Badge: ย่อ-ขยายตามสัดส่วนความกว้างของแผนที่อัตโนมัติ ===== */
@@ -41,13 +37,10 @@
             line-height: 1.2;
             transform: translate(-50%, -50%) scale(var(--badge-scale));
             transform-origin: center center;
-            transition: transform 0.12s ease, border-color 0.2s ease, background-color 0.2s ease;
+            transition: border-color 0.2s ease, background-color 0.2s ease;
             cursor: pointer;
             user-select: none;
             z-index: 5;
-        }
-        .map-container.is-pinching .sensor-badge {
-            transition: none !important;
         }
         .sensor-badge:hover {
             z-index: 15;
@@ -230,21 +223,20 @@
     </header>
 
     <div class="shrink-0 text-center text-[9px] md:text-xs text-slate-400 mb-1">
-        👆 แตะการ์ดดูกราฟ | 🤏 จีบนิ้วซูม/ลากเลื่อน | ⚠️ Warning | 🚨 Critical | ✕ รับทราบ
+        👆 แตะการ์ดดูกราฟ | 🤏 ซูม/ลากเลื่อน | ⚠️ Warning | 🚨 Critical | ✕ รับทราบ
     </div>
 
     <div id="toast-container" class="fixed top-4 right-4 z-[60] flex flex-col gap-2 pointer-events-none"></div>
 
     <!-- Map Area -->
     <main id="map-viewport" class="relative flex-1 min-h-0 w-full bg-slate-900 rounded-lg border border-slate-700 shadow-xl overflow-hidden">
-        <!-- แผงปุ่มซูมกะทัดรัด ชิดกันเป็นชุดเดียว -->
+        <!-- แผงปุ่มซูม -->
         <div class="absolute top-2 right-2 z-20 flex flex-col gap-1 bg-slate-900/90 p-1 rounded-lg border border-slate-600 shadow-lg">
             <button type="button" onclick="app.zoomMap(25)" aria-label="ซูมเข้า" class="w-7 h-7 md:w-8 md:h-8 flex items-center justify-center bg-slate-700 hover:bg-emerald-600 active:bg-emerald-500 text-white font-bold rounded text-xs">➕</button>
             <button type="button" onclick="app.resetZoom()" aria-label="พอดีหน้าจอ" class="w-7 h-7 md:w-8 md:h-8 flex items-center justify-center bg-slate-700 hover:bg-blue-600 active:bg-blue-500 text-white font-bold rounded text-[10px]">FIT</button>
             <button type="button" onclick="app.zoomMap(-25)" aria-label="ซูมออก" class="w-7 h-7 md:w-8 md:h-8 flex items-center justify-center bg-slate-700 hover:bg-rose-600 active:bg-rose-500 text-white font-bold rounded text-xs">➖</button>
         </div>
 
-        <!-- ใช้ flex ร่วมกับ m-auto ที่ลูก เพื่อให้จัดกลางจอได้โดยไม่ยืดความสูงลูก -->
         <div id="map-scroll-wrapper" class="w-full h-full overflow-auto hide-scroll cursor-grab flex">
             <div id="map-container" class="map-container">
                 <img id="plant-map-img" src="map-bg.jpg" alt="Plant Map" class="w-full h-auto block opacity-85 pointer-events-none select-none">
@@ -253,7 +245,7 @@
                 <div id="badge-1" onclick="app.openChart(1)" role="button" tabindex="0"
                     aria-label="จุดที่ 1 - ดูกราฟย้อนหลัง"
                     class="sensor-badge bg-slate-900/90 border-2 border-slate-500 rounded p-1.5 shadow-md text-[10px] hover:border-emerald-400"
-                    style="top: 75%; left: 27%;">
+                    style="top: 78%; left: 31%;">
                     <button type="button" class="ack-btn warn hidden" onclick="event.stopPropagation(); app.acknowledge(1)" title="รับทราบ" aria-label="รับทราบจุดที่ 1">✕</button>
                     <div class="font-bold text-emerald-400 border-b border-slate-600 pb-0.5 mb-0.5 text-center text-[11px]">จุดที่ 1</div>
                     <div class="whitespace-nowrap"><span class="text-amber-400">T:</span> <span id="val-t1" class="font-mono text-slate-100">--</span></div>
@@ -266,7 +258,7 @@
                 <div id="badge-2" onclick="app.openChart(2)" role="button" tabindex="0"
                     aria-label="จุดที่ 2 - ดูกราฟย้อนหลัง"
                     class="sensor-badge bg-slate-900/90 border-2 border-slate-500 rounded p-1.5 shadow-md text-[10px] hover:border-emerald-400"
-                    style="top: 57%; left: 38%;">
+                    style="top: 62%; left: 44%;">
                     <button type="button" class="ack-btn warn hidden" onclick="event.stopPropagation(); app.acknowledge(2)" title="รับทราบ" aria-label="รับทราบจุดที่ 2">✕</button>
                     <div class="font-bold text-emerald-400 border-b border-slate-600 pb-0.5 mb-0.5 text-center text-[11px]">จุดที่ 2</div>
                     <div class="whitespace-nowrap"><span class="text-amber-400">T:</span> <span id="val-t2" class="font-mono text-slate-100">--</span></div>
@@ -279,7 +271,7 @@
                 <div id="badge-3" onclick="app.openChart(3)" role="button" tabindex="0"
                     aria-label="จุดที่ 3 - ดูกราฟย้อนหลัง"
                     class="sensor-badge bg-slate-900/90 border-2 border-slate-500 rounded p-1.5 shadow-md text-[10px] hover:border-emerald-400"
-                    style="top: 44%; left: 52%;">
+                    style="top: 51%; left: 59%;">
                     <button type="button" class="ack-btn warn hidden" onclick="event.stopPropagation(); app.acknowledge(3)" title="รับทราบ" aria-label="รับทราบจุดที่ 3">✕</button>
                     <div class="font-bold text-emerald-400 border-b border-slate-600 pb-0.5 mb-0.5 text-center text-[11px]">จุดที่ 3</div>
                     <div class="whitespace-nowrap"><span class="text-amber-400">T:</span> <span id="val-t3" class="font-mono text-slate-100">--</span></div>
@@ -292,7 +284,7 @@
                 <div id="badge-4" onclick="app.openChart(4)" role="button" tabindex="0"
                     aria-label="จุดที่ 4 - ดูกราฟย้อนหลัง"
                     class="sensor-badge bg-slate-900/90 border-2 border-slate-500 rounded p-1.5 shadow-md text-[10px] hover:border-emerald-400"
-                    style="top: 19%; left: 63%;">
+                    style="top: 27%; left: 73%;">
                     <button type="button" class="ack-btn warn hidden" onclick="event.stopPropagation(); app.acknowledge(4)" title="รับทราบ" aria-label="รับทราบจุดที่ 4">✕</button>
                     <div class="font-bold text-emerald-400 border-b border-slate-600 pb-0.5 mb-0.5 text-center text-[11px]">จุดที่ 4</div>
                     <div class="whitespace-nowrap"><span class="text-amber-400">T:</span> <span id="val-t4" class="font-mono text-slate-100">--</span></div>
@@ -305,7 +297,7 @@
                 <div id="badge-5" onclick="app.openChart(5)" role="button" tabindex="0"
                     aria-label="จุดที่ 5 - ดูกราฟย้อนหลัง"
                     class="sensor-badge bg-slate-900/90 border-2 border-slate-500 rounded p-1.5 shadow-md text-[10px] hover:border-emerald-400"
-                    style="top: 10%; left: 78%;">
+                    style="top: 16%; left: 86%;">
                     <button type="button" class="ack-btn warn hidden" onclick="event.stopPropagation(); app.acknowledge(5)" title="รับทราบ" aria-label="รับทราบจุดที่ 5">✕</button>
                     <div class="font-bold text-emerald-400 border-b border-slate-600 pb-0.5 mb-0.5 text-center text-[11px]">จุดที่ 5</div>
                     <div class="whitespace-nowrap"><span class="text-amber-400">T:</span> <span id="val-t5" class="font-mono text-slate-100">--</span></div>
@@ -745,7 +737,6 @@
         // ---------- MAP ZOOM / PAN / PINCH-TO-ZOOM ----------
         setupMapZoom() {
             const slider = this.refs.mapScroll;
-            const container = this.refs.mapContainer;
 
             let isMouseDown = false;
             let wasDragging = false;
@@ -814,7 +805,6 @@
                     isPinching = true;
                     isTouchPanning = false;
                     wasDragging = true;
-                    container.classList.add('is-pinching');
                     initialPinchDist = getDistance(e.touches[0], e.touches[1]);
                     initialPinchZoom = this.state.mapZoom;
                 } else if (e.touches.length === 1) {
@@ -861,7 +851,6 @@
             const onTouchEnd = (e) => {
                 if (e.touches.length < 2 && isPinching) {
                     isPinching = false;
-                    container.classList.remove('is-pinching');
                     if (pinchRaf) {
                         cancelAnimationFrame(pinchRaf);
                         pinchRaf = null;
