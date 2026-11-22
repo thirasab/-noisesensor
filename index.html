@@ -14,6 +14,13 @@
         .cursor-grab { cursor: grab; }
         .cursor-grabbing { cursor: grabbing !important; }
 
+        /* ป้องกันเบราว์เซอร์ดึงหน้าจอหรือซูมทั้งเว็บทับซ้อนขณะใช้ 1-2 นิ้วบนแผนที่ */
+        #map-scroll-wrapper {
+            touch-action: none;
+            overscroll-behavior: contain;
+            -webkit-overflow-scrolling: touch;
+        }
+
         /* กล่องแผนที่ปรับขนาดตามภาพจริง เพื่อรักษาพิกัด % ของ Badge ให้ตรงตำแหน่งเสมอ */
         .map-container {
             position: relative;
@@ -21,6 +28,10 @@
             width: 100%;
             --badge-scale: 0.85;
             transition: width 0.25s ease-out;
+        }
+        /* ปิด transition ชั่วคราวขณะจีบนิ้ว เพื่อให้ซูมติดนิ้วแบบ 60fps ไม่หน่วง */
+        .map-container.is-pinching {
+            transition: none !important;
         }
 
         /* ===== Badge: ย่อ-ขยายตามสัดส่วนความกว้างของแผนที่อัตโนมัติ ===== */
@@ -32,6 +43,9 @@
             cursor: pointer;
             user-select: none;
             z-index: 5;
+        }
+        .map-container.is-pinching .sensor-badge {
+            transition: none !important;
         }
         .sensor-badge:hover {
             z-index: 15;
@@ -214,14 +228,14 @@
     </header>
 
     <div class="shrink-0 text-center text-[9px] md:text-xs text-slate-400 mb-1">
-        👆 แตะการ์ดเพื่อดูกราฟ (dBA) | 💻 ปุ่มซูม/ลากเมาส์ | ⚠️ Warning | 🚨 Critical | ✕ รับทราบ
+        👆 แตะการ์ดดูกราฟ | 🤏 จีบนิ้วซูม/ลากเลื่อน | ⚠️ Warning | 🚨 Critical | ✕ รับทราบ
     </div>
 
     <div id="toast-container" class="fixed top-4 right-4 z-[60] flex flex-col gap-2 pointer-events-none"></div>
 
-    <!-- Map Area (ขยายเต็มพื้นที่ความสูงที่เหลือแบบพอดีจอ ไม่เกิด Scrollbar หลัก) -->
+    <!-- Map Area -->
     <main id="map-viewport" class="relative flex-1 min-h-0 w-full bg-slate-900 rounded-lg border border-slate-700 shadow-xl overflow-hidden flex items-center justify-center">
-        <!-- ปุ่มซูม (รองรับทั้งมือถือและคอม) -->
+        <!-- ปุ่มซูม -->
         <div class="absolute top-2 right-2 z-20 flex flex-col gap-1 bg-slate-900/85 p-1 rounded-lg border border-slate-600 shadow-xl">
             <button type="button" onclick="app.zoomMap(25)" aria-label="ซูมเข้า" class="w-7 h-7 md:w-8 md:h-8 flex items-center justify-center bg-slate-700 hover:bg-emerald-600 text-white font-bold rounded transition text-xs">➕</button>
             <button type="button" onclick="app.resetZoom()" aria-label="พอดีหน้าจอ" class="w-7 h-7 md:w-8 md:h-8 flex items-center justify-center bg-slate-700 hover:bg-blue-600 text-white font-bold rounded transition text-[10px] md:text-xs">FIT</button>
@@ -229,7 +243,6 @@
         </div>
 
         <div id="map-scroll-wrapper" class="w-full h-full overflow-auto hide-scroll cursor-grab flex items-center justify-center">
-            <!-- กล่องนี้จะถูกคำนวณความกว้างให้ภาพพอดีความสูง/ความกว้างหน้าจอเป๊ะ 100% -->
             <div id="map-container" class="map-container shrink-0">
                 <img id="plant-map-img" src="map-bg.jpg" alt="Plant Map" class="w-full h-auto block opacity-85 pointer-events-none select-none">
 
@@ -347,7 +360,7 @@
                 DEFAULT_CRIT: 95,
                 FETCH_TIMEOUT: 10000,
                 ALARM_SYNC_MS: 30000,
-                BASE_MAP_WIDTH: 1200 // ความกว้างอ้างอิงที่สเกลการ์ด = 1.0
+                BASE_MAP_WIDTH: 1200
             };
 
             this.refs = {};
@@ -366,7 +379,7 @@
                 lastData: null,
                 rafId: null,
                 criticalActive: false,
-                mapZoom: 1, // ตัวคูณการซูม (1 = พอดีจอ)
+                mapZoom: 1,
                 saveAlarmTimer: null,
                 syncingAlarm: false,
                 offsets: [0, 0, 0, 0, 0, 0]
@@ -434,7 +447,6 @@
                 this.refs.mapImg.addEventListener('load', recalc);
             }
 
-            // ตรวจจับการย่อ-ขยายหน้าจอ หรือการเปิด-ปิดแผงชดเชย dBA แบบเรียลไทม์
             if (window.ResizeObserver) {
                 const ro = new ResizeObserver(() => recalc());
                 ro.observe(this.refs.mapViewport);
@@ -452,31 +464,25 @@
             const vpH = vp.clientHeight;
             if (vpW <= 0 || vpH <= 0) return;
 
-            // อัตราส่วนภาพจริง (ถ้าภาพยังโหลดไม่เสร็จใช้ 16:9 เป็นค่าเริ่มต้น)
             const natW = img.naturalWidth || 1600;
             const natH = img.naturalHeight || 900;
             const imgAspect = natW / natH;
             const vpAspect = vpW / vpH;
 
-            // คำนวณความกว้างที่ทำให้ภาพพอดีกรอบ 100% ทั้งแนวตั้งและแนวนอน (Contain)
             let fitWidth = vpW;
             if (vpAspect > imgAspect) {
-                // จอกว้างกว่าภาพ -> ยึดความสูงเป็นหลัก
                 fitWidth = vpH * imgAspect;
             }
 
-            // คูณด้วยระดับการซูมปัจจุบัน
             const targetWidth = Math.round(fitWidth * this.state.mapZoom);
             this.refs.mapContainer.style.width = targetWidth + 'px';
 
-            // ปรับการจัดวางเมื่อซูมเกินกรอบเพื่อให้เลื่อนดูขอบซ้าย/บนได้ไม่ถูกตัด
-            if (this.state.mapZoom > 1) {
+            if (this.state.mapZoom > 1.01) {
                 this.refs.mapScroll.classList.remove('items-center', 'justify-center');
             } else {
                 this.refs.mapScroll.classList.add('items-center', 'justify-center');
             }
 
-            // คำนวณสเกลของการ์ดแปรผันตรงตามความกว้างจริงของแผนที่ (จำกัดช่วง 0.38 - 1.35 เพื่อให้อ่านง่ายเสมอ)
             const badgeScale = Math.max(0.38, Math.min(1.35, targetWidth / this.config.BASE_MAP_WIDTH));
             this.refs.mapContainer.style.setProperty('--badge-scale', badgeScale.toFixed(3));
         }
@@ -739,24 +745,36 @@
             return { warn, crit };
         }
 
-        // ---------- MAP ZOOM/PAN ----------
+        // ---------- MAP ZOOM / PAN / PINCH-TO-ZOOM ----------
         setupMapZoom() {
             const slider = this.refs.mapScroll;
-            let isDown = false, wasDragging = false;
-            let startX, startY, scrollLeft, scrollTop;
+            const container = this.refs.mapContainer;
 
+            let isMouseDown = false;
+            let wasDragging = false;
+            let startX = 0, startY = 0, scrollLeft = 0, scrollTop = 0;
+
+            // 1) Mouse Drag (Desktop)
             slider.addEventListener('mousedown', (e) => {
-                isDown = true; wasDragging = false;
+                if (e.button !== 0) return;
+                isMouseDown = true;
+                wasDragging = false;
                 slider.classList.add('cursor-grabbing');
                 startX = e.pageX - slider.offsetLeft;
                 startY = e.pageY - slider.offsetTop;
                 scrollLeft = slider.scrollLeft;
                 scrollTop = slider.scrollTop;
             });
-            slider.addEventListener('mouseleave', () => { isDown = false; slider.classList.remove('cursor-grabbing'); });
-            slider.addEventListener('mouseup', () => { isDown = false; slider.classList.remove('cursor-grabbing'); });
+            slider.addEventListener('mouseleave', () => {
+                isMouseDown = false;
+                slider.classList.remove('cursor-grabbing');
+            });
+            slider.addEventListener('mouseup', () => {
+                isMouseDown = false;
+                slider.classList.remove('cursor-grabbing');
+            });
             slider.addEventListener('mousemove', (e) => {
-                if (!isDown) return;
+                if (!isMouseDown) return;
                 e.preventDefault();
                 const x = e.pageX - slider.offsetLeft;
                 const y = e.pageY - slider.offsetTop;
@@ -766,6 +784,113 @@
                 slider.scrollLeft = scrollLeft - walkX;
                 slider.scrollTop = scrollTop - walkY;
             });
+
+            // 2) Mouse Wheel Zoom (Desktop)
+            slider.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const rect = slider.getBoundingClientRect();
+                const focusX = e.clientX - rect.left;
+                const focusY = e.clientY - rect.top;
+
+                const oldZoom = this.state.mapZoom;
+                const factor = e.deltaY < 0 ? 1.15 : 0.87;
+                const newZoom = Math.max(1, Math.min(4, oldZoom * factor));
+                if (Math.abs(newZoom - oldZoom) < 0.001) return;
+
+                this.zoomAtPoint(newZoom, focusX, focusY);
+            }, { passive: false });
+
+            // 3) Touch Pan (1 นิ้ว) & Pinch-to-Zoom (2 นิ้ว) บนมือถือ/แท็บเล็ต
+            let isPinching = false;
+            let isTouchPanning = false;
+            let initialPinchDist = 0;
+            let initialPinchZoom = 1;
+            let touchStartX = 0, touchStartY = 0;
+            let touchScrollLeft = 0, touchScrollTop = 0;
+            let pinchRaf = null;
+
+            const getDistance = (t1, t2) => Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+            const getMidpoint = (t1, t2, rect) => ({
+                x: ((t1.clientX + t2.clientX) / 2) - rect.left,
+                y: ((t1.clientY + t2.clientY) / 2) - rect.top
+            });
+
+            slider.addEventListener('touchstart', (e) => {
+                if (e.touches.length === 2) {
+                    isPinching = true;
+                    isTouchPanning = false;
+                    wasDragging = true;
+                    container.classList.add('is-pinching');
+                    initialPinchDist = getDistance(e.touches[0], e.touches[1]);
+                    initialPinchZoom = this.state.mapZoom;
+                } else if (e.touches.length === 1) {
+                    isTouchPanning = true;
+                    isPinching = false;
+                    wasDragging = false;
+                    touchStartX = e.touches[0].clientX;
+                    touchStartY = e.touches[0].clientY;
+                    touchScrollLeft = slider.scrollLeft;
+                    touchScrollTop = slider.scrollTop;
+                }
+            }, { passive: true });
+
+            slider.addEventListener('touchmove', (e) => {
+                if (isPinching && e.touches.length === 2) {
+                    e.preventDefault();
+                    const currentDist = getDistance(e.touches[0], e.touches[1]);
+                    if (initialPinchDist <= 0) return;
+
+                    const rect = slider.getBoundingClientRect();
+                    const mid = getMidpoint(e.touches[0], e.touches[1], rect);
+                    const rawZoom = initialPinchZoom * (currentDist / initialPinchDist);
+                    const targetZoom = Math.max(1, Math.min(4, rawZoom));
+
+                    if (pinchRaf) cancelAnimationFrame(pinchRaf);
+                    pinchRaf = requestAnimationFrame(() => {
+                        this.zoomAtPoint(targetZoom, mid.x, mid.y);
+                    });
+                } else if (isTouchPanning && e.touches.length === 1) {
+                    const dx = e.touches[0].clientX - touchStartX;
+                    const dy = e.touches[0].clientY - touchStartY;
+
+                    if (Math.abs(dx) > 6 || Math.abs(dy) > 6) {
+                        wasDragging = true;
+                    }
+                    if (this.state.mapZoom > 1.01) {
+                        e.preventDefault();
+                        slider.scrollLeft = touchScrollLeft - dx;
+                        slider.scrollTop = touchScrollTop - dy;
+                    }
+                }
+            }, { passive: false });
+
+            const onTouchEnd = (e) => {
+                if (e.touches.length < 2 && isPinching) {
+                    isPinching = false;
+                    container.classList.remove('is-pinching');
+                    if (pinchRaf) {
+                        cancelAnimationFrame(pinchRaf);
+                        pinchRaf = null;
+                    }
+                }
+                if (e.touches.length === 1) {
+                    // เปลี่ยนจากการจีบ 2 นิ้ว เหลือ 1 นิ้ว ให้ลากต่อได้ทันทีไม่กระตุก
+                    isTouchPanning = true;
+                    touchStartX = e.touches[0].clientX;
+                    touchStartY = e.touches[0].clientY;
+                    touchScrollLeft = slider.scrollLeft;
+                    touchScrollTop = slider.scrollTop;
+                } else if (e.touches.length === 0) {
+                    isTouchPanning = false;
+                    // หน่วงรีเซ็ต flag เล็กน้อยเพื่อกัน event click ที่ตามหลัง touchend
+                    setTimeout(() => { wasDragging = false; }, 60);
+                }
+            };
+
+            slider.addEventListener('touchend', onTouchEnd, { passive: true });
+            slider.addEventListener('touchcancel', onTouchEnd, { passive: true });
+
+            // ป้องกันการเปิดกราฟโดยไม่ตั้งใจหลังลากหรือจีบนิ้ว
             slider.addEventListener('click', (e) => {
                 if (wasDragging) {
                     e.stopPropagation();
@@ -775,15 +900,45 @@
             }, true);
         }
 
-        zoomMap(stepPercent) {
-            const delta = stepPercent / 100;
-            this.state.mapZoom = Math.max(1, Math.min(4, Number((this.state.mapZoom + delta).toFixed(2))));
+        // ซูมโดยยึดตำแหน่งจุดกึ่งกลางนิ้ว/เมาส์ให้อยู่ที่เดิม (Focal-point Zoom)
+        zoomAtPoint(newZoom, focusX, focusY) {
+            const slider = this.refs.mapScroll;
+            const container = this.refs.mapContainer;
+
+            const oldW = container.offsetWidth || 1;
+            const oldH = container.offsetHeight || 1;
+
+            // สัดส่วนตำแหน่งบนแผนที่ที่นิ้วกำลังชี้ (0.0 - 1.0)
+            const ratioX = (slider.scrollLeft + focusX) / oldW;
+            const ratioY = (slider.scrollTop + focusY) / oldH;
+
+            this.state.mapZoom = Number(newZoom.toFixed(3));
             this.fitMapToViewport();
+
+            const newW = container.offsetWidth;
+            const newH = container.offsetHeight;
+
+            if (this.state.mapZoom > 1.01) {
+                slider.scrollLeft = (ratioX * newW) - focusX;
+                slider.scrollTop = (ratioY * newH) - focusY;
+            } else {
+                slider.scrollLeft = 0;
+                slider.scrollTop = 0;
+            }
+        }
+
+        zoomMap(stepPercent) {
+            const slider = this.refs.mapScroll;
+            const delta = stepPercent / 100;
+            const targetZoom = Math.max(1, Math.min(4, this.state.mapZoom + delta));
+            this.zoomAtPoint(targetZoom, slider.clientWidth / 2, slider.clientHeight / 2);
         }
 
         resetZoom() {
             this.state.mapZoom = 1;
             this.fitMapToViewport();
+            this.refs.mapScroll.scrollLeft = 0;
+            this.refs.mapScroll.scrollTop = 0;
         }
 
         // ---------- A11Y & MODAL DISMISS ----------
