@@ -20,7 +20,6 @@
             -webkit-overflow-scrolling: touch;
         }
 
-        /* ตัด transition: width ออก เพื่อให้ความกว้างภาพ การ์ด และ scroll อัปเดตพร้อมกันในเฟรมเดียว */
         .map-container {
             position: relative;
             display: block;
@@ -54,6 +53,14 @@
             outline: 2px solid #34d399;
             outline-offset: 2px;
             z-index: 15;
+        }
+
+        /* โหมดแก้ไขตำแหน่งการ์ด (Edit Pin Mode) */
+        .edit-mode .sensor-badge {
+            cursor: move !important;
+            outline: 2px dashed #38bdf8;
+            outline-offset: 2px;
+            z-index: 20;
         }
 
         /* ===== Alarm states ===== */
@@ -143,7 +150,11 @@
                     <h1 class="text-sm md:text-lg font-bold text-emerald-400 tracking-wide leading-tight">SCG CEMENT</h1>
                     <p class="text-[9px] md:text-xs mt-0.5" id="connection-status" aria-live="polite">🟡 Connecting...</p>
                 </div>
-                <div class="flex items-center gap-1.5 md:hidden">
+                <div class="flex items-center gap-1 md:hidden">
+                    <button type="button" id="btn-edit-pin-mobile" onclick="app.toggleEditPin()"
+                        class="px-2 py-1 bg-slate-700 text-sky-300 text-[10px] font-bold rounded border border-slate-500 min-h-[30px]">
+                        📍 ย้ายจุด
+                    </button>
                     <button type="button" onclick="app.toggleCalibPanel()"
                         class="px-2 py-1 bg-slate-700 text-emerald-300 text-[10px] font-bold rounded border border-slate-500 min-h-[30px]">
                         🎛️ ชดเชย
@@ -175,6 +186,10 @@
             </div>
 
             <div class="hidden md:flex items-center gap-2">
+                <button type="button" id="btn-edit-pin" onclick="app.toggleEditPin()" title="ลากย้ายตำแหน่งการ์ดบนแผนที่"
+                    class="px-2.5 py-1 bg-slate-700 hover:bg-slate-600 text-sky-300 text-xs font-bold rounded border border-slate-500 min-h-[30px]">
+                    📍 ปรับตำแหน่งจุด
+                </button>
                 <button type="button" onclick="app.toggleCalibPanel()" title="ตั้งค่าชดเชย dBA"
                     class="px-2.5 py-1 bg-slate-700 hover:bg-slate-600 text-emerald-300 text-xs font-bold rounded border border-slate-500 min-h-[30px]">
                     🎛️ ชดเชย dBA
@@ -220,6 +235,16 @@
                 </button>
             </div>
         </div>
+
+        <!-- แถบแสดงพิกัดเมื่อเปิดโหมดปรับตำแหน่งจุด -->
+        <div id="pin-coord-bar" class="hidden mt-2 pt-2 border-t border-slate-700">
+            <div class="flex flex-wrap items-center justify-center gap-2 bg-sky-950/60 p-1.5 rounded border border-sky-700 text-[10px] md:text-xs">
+                <span class="font-bold text-sky-300">📍 ลากการ์ด 1-5 ไปวางตรงจุดที่ต้องการ:</span>
+                <span id="pin-coord-readout" class="font-mono text-slate-200"></span>
+                <button type="button" onclick="app.resetPinPositions()" class="px-2 py-0.5 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded border border-slate-500">รีเซ็ตค่าเริ่มต้น</button>
+                <button type="button" onclick="app.copyPinPositions()" class="px-2 py-0.5 bg-sky-600 hover:bg-sky-500 text-white font-bold rounded">📋 คัดลอกพิกัด</button>
+            </div>
+        </div>
     </header>
 
     <div class="shrink-0 text-center text-[9px] md:text-xs text-slate-400 mb-1">
@@ -242,10 +267,10 @@
                 <img id="plant-map-img" src="map-bg.jpg" alt="Plant Map" class="w-full h-auto block opacity-85 pointer-events-none select-none">
 
                 <!-- จุดที่ 1 -->
-                <div id="badge-1" onclick="app.openChart(1)" role="button" tabindex="0"
+                <div id="badge-1" data-node="1" onclick="app.handleBadgeClick(1)" role="button" tabindex="0"
                     aria-label="จุดที่ 1 - ดูกราฟย้อนหลัง"
                     class="sensor-badge bg-slate-900/90 border-2 border-slate-500 rounded p-1.5 shadow-md text-[10px] hover:border-emerald-400"
-                    style="top: 78%; left: 31%;">
+                    style="top: 75%; left: 27%;">
                     <button type="button" class="ack-btn warn hidden" onclick="event.stopPropagation(); app.acknowledge(1)" title="รับทราบ" aria-label="รับทราบจุดที่ 1">✕</button>
                     <div class="font-bold text-emerald-400 border-b border-slate-600 pb-0.5 mb-0.5 text-center text-[11px]">จุดที่ 1</div>
                     <div class="whitespace-nowrap"><span class="text-amber-400">T:</span> <span id="val-t1" class="font-mono text-slate-100">--</span></div>
@@ -255,10 +280,10 @@
                 </div>
 
                 <!-- จุดที่ 2 -->
-                <div id="badge-2" onclick="app.openChart(2)" role="button" tabindex="0"
+                <div id="badge-2" data-node="2" onclick="app.handleBadgeClick(2)" role="button" tabindex="0"
                     aria-label="จุดที่ 2 - ดูกราฟย้อนหลัง"
                     class="sensor-badge bg-slate-900/90 border-2 border-slate-500 rounded p-1.5 shadow-md text-[10px] hover:border-emerald-400"
-                    style="top: 62%; left: 44%;">
+                    style="top: 57%; left: 38%;">
                     <button type="button" class="ack-btn warn hidden" onclick="event.stopPropagation(); app.acknowledge(2)" title="รับทราบ" aria-label="รับทราบจุดที่ 2">✕</button>
                     <div class="font-bold text-emerald-400 border-b border-slate-600 pb-0.5 mb-0.5 text-center text-[11px]">จุดที่ 2</div>
                     <div class="whitespace-nowrap"><span class="text-amber-400">T:</span> <span id="val-t2" class="font-mono text-slate-100">--</span></div>
@@ -268,10 +293,10 @@
                 </div>
 
                 <!-- จุดที่ 3 -->
-                <div id="badge-3" onclick="app.openChart(3)" role="button" tabindex="0"
+                <div id="badge-3" data-node="3" onclick="app.handleBadgeClick(3)" role="button" tabindex="0"
                     aria-label="จุดที่ 3 - ดูกราฟย้อนหลัง"
                     class="sensor-badge bg-slate-900/90 border-2 border-slate-500 rounded p-1.5 shadow-md text-[10px] hover:border-emerald-400"
-                    style="top: 51%; left: 59%;">
+                    style="top: 44%; left: 52%;">
                     <button type="button" class="ack-btn warn hidden" onclick="event.stopPropagation(); app.acknowledge(3)" title="รับทราบ" aria-label="รับทราบจุดที่ 3">✕</button>
                     <div class="font-bold text-emerald-400 border-b border-slate-600 pb-0.5 mb-0.5 text-center text-[11px]">จุดที่ 3</div>
                     <div class="whitespace-nowrap"><span class="text-amber-400">T:</span> <span id="val-t3" class="font-mono text-slate-100">--</span></div>
@@ -281,10 +306,10 @@
                 </div>
 
                 <!-- จุดที่ 4 -->
-                <div id="badge-4" onclick="app.openChart(4)" role="button" tabindex="0"
+                <div id="badge-4" data-node="4" onclick="app.handleBadgeClick(4)" role="button" tabindex="0"
                     aria-label="จุดที่ 4 - ดูกราฟย้อนหลัง"
                     class="sensor-badge bg-slate-900/90 border-2 border-slate-500 rounded p-1.5 shadow-md text-[10px] hover:border-emerald-400"
-                    style="top: 27%; left: 73%;">
+                    style="top: 19%; left: 63%;">
                     <button type="button" class="ack-btn warn hidden" onclick="event.stopPropagation(); app.acknowledge(4)" title="รับทราบ" aria-label="รับทราบจุดที่ 4">✕</button>
                     <div class="font-bold text-emerald-400 border-b border-slate-600 pb-0.5 mb-0.5 text-center text-[11px]">จุดที่ 4</div>
                     <div class="whitespace-nowrap"><span class="text-amber-400">T:</span> <span id="val-t4" class="font-mono text-slate-100">--</span></div>
@@ -294,10 +319,10 @@
                 </div>
 
                 <!-- จุดที่ 5 -->
-                <div id="badge-5" onclick="app.openChart(5)" role="button" tabindex="0"
+                <div id="badge-5" data-node="5" onclick="app.handleBadgeClick(5)" role="button" tabindex="0"
                     aria-label="จุดที่ 5 - ดูกราฟย้อนหลัง"
                     class="sensor-badge bg-slate-900/90 border-2 border-slate-500 rounded p-1.5 shadow-md text-[10px] hover:border-emerald-400"
-                    style="top: 16%; left: 86%;">
+                    style="top: 10%; left: 78%;">
                     <button type="button" class="ack-btn warn hidden" onclick="event.stopPropagation(); app.acknowledge(5)" title="รับทราบ" aria-label="รับทราบจุดที่ 5">✕</button>
                     <div class="font-bold text-emerald-400 border-b border-slate-600 pb-0.5 mb-0.5 text-center text-[11px]">จุดที่ 5</div>
                     <div class="whitespace-nowrap"><span class="text-amber-400">T:</span> <span id="val-t5" class="font-mono text-slate-100">--</span></div>
@@ -355,7 +380,14 @@
                 DEFAULT_CRIT: 95,
                 FETCH_TIMEOUT: 10000,
                 ALARM_SYNC_MS: 30000,
-                BASE_MAP_WIDTH: 1200
+                BASE_MAP_WIDTH: 1200,
+                DEFAULT_PINS: {
+                    1: { top: 75, left: 27 },
+                    2: { top: 57, left: 38 },
+                    3: { top: 44, left: 52 },
+                    4: { top: 19, left: 63 },
+                    5: { top: 10, left: 78 }
+                }
             };
 
             this.refs = {};
@@ -377,7 +409,9 @@
                 mapZoom: 1,
                 saveAlarmTimer: null,
                 syncingAlarm: false,
-                offsets: [0, 0, 0, 0, 0, 0]
+                offsets: [0, 0, 0, 0, 0, 0],
+                editPinMode: false,
+                pins: {}
             };
 
             this.init();
@@ -385,8 +419,10 @@
 
         init() {
             this.cacheRefs();
+            this.loadPinPositions();
             this.setupFitAndScale();
             this.setupMapZoom();
+            this.setupPinDrag();
             this.setupBadgeKeyboard();
             this.setupModalDismiss();
             this.setupAlarmLimits();
@@ -394,23 +430,27 @@
         }
 
         cacheRefs() {
-            this.refs.status          = document.getElementById('connection-status');
-            this.refs.btnAudio        = document.getElementById('btn-audio');
-            this.refs.btnAudioDesk    = document.getElementById('btn-audio-desktop');
-            this.refs.limitWarn       = document.getElementById('limit-warn');
-            this.refs.limitCrit       = document.getElementById('limit-crit');
-            this.refs.alarmSyncStatus = document.getElementById('alarm-sync-status');
-            this.refs.calibPanel      = document.getElementById('calib-panel');
-            this.refs.mapViewport     = document.getElementById('map-viewport');
-            this.refs.mapContainer    = document.getElementById('map-container');
-            this.refs.mapScroll       = document.getElementById('map-scroll-wrapper');
-            this.refs.mapImg          = document.getElementById('plant-map-img');
-            this.refs.modal           = document.getElementById('chart-modal');
-            this.refs.modalTitle      = document.getElementById('chart-title');
-            this.refs.loadingText     = document.getElementById('loading-text');
-            this.refs.timeRange       = document.getElementById('time-range');
-            this.refs.toast           = document.getElementById('toast-container');
-            this.refs.canvas          = document.getElementById('historyChart');
+            this.refs.status           = document.getElementById('connection-status');
+            this.refs.btnAudio         = document.getElementById('btn-audio');
+            this.refs.btnAudioDesk     = document.getElementById('btn-audio-desktop');
+            this.refs.btnEditPin       = document.getElementById('btn-edit-pin');
+            this.refs.btnEditPinMobile = document.getElementById('btn-edit-pin-mobile');
+            this.refs.pinCoordBar      = document.getElementById('pin-coord-bar');
+            this.refs.pinCoordReadout  = document.getElementById('pin-coord-readout');
+            this.refs.limitWarn        = document.getElementById('limit-warn');
+            this.refs.limitCrit        = document.getElementById('limit-crit');
+            this.refs.alarmSyncStatus  = document.getElementById('alarm-sync-status');
+            this.refs.calibPanel       = document.getElementById('calib-panel');
+            this.refs.mapViewport      = document.getElementById('map-viewport');
+            this.refs.mapContainer     = document.getElementById('map-container');
+            this.refs.mapScroll        = document.getElementById('map-scroll-wrapper');
+            this.refs.mapImg           = document.getElementById('plant-map-img');
+            this.refs.modal            = document.getElementById('chart-modal');
+            this.refs.modalTitle       = document.getElementById('chart-title');
+            this.refs.loadingText      = document.getElementById('loading-text');
+            this.refs.timeRange        = document.getElementById('time-range');
+            this.refs.toast            = document.getElementById('toast-container');
+            this.refs.canvas           = document.getElementById('historyChart');
 
             this.refs.badges     = [];
             this.refs.valsT      = [];
@@ -430,6 +470,138 @@
                 const badge = this.refs.badges[i];
                 this.refs.ackBtns[i] = badge ? badge.querySelector('.ack-btn') : null;
             }
+        }
+
+        // ---------- PIN POSITIONS & EDIT MODE ----------
+        loadPinPositions() {
+            let saved = null;
+            try {
+                saved = JSON.parse(localStorage.getItem('scada_pin_positions'));
+            } catch (e) {}
+
+            for (let i = 1; i <= this.config.NODE_COUNT; i++) {
+                const def = this.config.DEFAULT_PINS[i];
+                const top = (saved && saved[i] && Number.isFinite(saved[i].top)) ? saved[i].top : def.top;
+                const left = (saved && saved[i] && Number.isFinite(saved[i].left)) ? saved[i].left : def.left;
+                this.state.pins[i] = { top, left };
+                this.applyPinStyle(i);
+            }
+            this.updatePinReadout();
+        }
+
+        applyPinStyle(nodeId) {
+            const badge = this.refs.badges[nodeId];
+            const pos = this.state.pins[nodeId];
+            if (!badge || !pos) return;
+            badge.style.top = pos.top + '%';
+            badge.style.left = pos.left + '%';
+        }
+
+        updatePinReadout() {
+            if (!this.refs.pinCoordReadout) return;
+            const parts = [];
+            for (let i = 1; i <= this.config.NODE_COUNT; i++) {
+                const p = this.state.pins[i];
+                parts.push(`#${i}(${p.top}%,${p.left}%)`);
+            }
+            this.refs.pinCoordReadout.textContent = parts.join(' | ');
+        }
+
+        toggleEditPin() {
+            this.state.editPinMode = !this.state.editPinMode;
+            this.refs.mapContainer.classList.toggle('edit-mode', this.state.editPinMode);
+            this.refs.pinCoordBar.classList.toggle('hidden', !this.state.editPinMode);
+
+            if (this.state.editPinMode) {
+                this.refs.btnEditPin.classList.replace('bg-slate-700', 'bg-sky-600');
+                this.refs.btnEditPin.classList.replace('text-sky-300', 'text-white');
+                this.refs.btnEditPinMobile.classList.replace('bg-slate-700', 'bg-sky-600');
+                this.refs.btnEditPinMobile.classList.replace('text-sky-300', 'text-white');
+                this.showToast('📍 เปิดโหมดย้ายจุด: ลากการ์ดไปยังตำแหน่งที่ต้องการ', 'info');
+            } else {
+                this.refs.btnEditPin.classList.replace('bg-sky-600', 'bg-slate-700');
+                this.refs.btnEditPin.classList.replace('text-white', 'text-sky-300');
+                this.refs.btnEditPinMobile.classList.replace('bg-sky-600', 'bg-slate-700');
+                this.refs.btnEditPinMobile.classList.replace('text-white', 'text-sky-300');
+            }
+            this.fitMapToViewport();
+        }
+
+        resetPinPositions() {
+            localStorage.removeItem('scada_pin_positions');
+            this.loadPinPositions();
+            this.showToast('รีเซ็ตตำแหน่งจุด 1-5 กลับค่าเริ่มต้นแล้ว', 'info');
+        }
+
+        copyPinPositions() {
+            const lines = [];
+            for (let i = 1; i <= this.config.NODE_COUNT; i++) {
+                const p = this.state.pins[i];
+                lines.push(`จุดที่ ${i}: top: ${p.top}%; left: ${p.left}%;`);
+            }
+            const text = lines.join('\n');
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(() => {
+                    this.showToast('📋 คัดลอกค่าพิกัด top/left แล้ว', 'success');
+                });
+            } else {
+                this.showToast(text, 'info');
+            }
+        }
+
+        setupPinDrag() {
+            let draggingNode = null;
+
+            const onPointerMove = (e) => {
+                if (!draggingNode || !this.state.editPinMode) return;
+                e.preventDefault();
+                e.stopPropagation();
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                const rect = this.refs.mapContainer.getBoundingClientRect();
+                if (rect.width <= 0 || rect.height <= 0) return;
+
+                const pctLeft = Math.max(2, Math.min(98, ((clientX - rect.left) / rect.width) * 100));
+                const pctTop  = Math.max(2, Math.min(98, ((clientY - rect.top) / rect.height) * 100));
+
+                this.state.pins[draggingNode] = {
+                    top: Number(pctTop.toFixed(1)),
+                    left: Number(pctLeft.toFixed(1))
+                };
+                this.applyPinStyle(draggingNode);
+                this.updatePinReadout();
+            };
+
+            const onPointerUp = () => {
+                if (!draggingNode) return;
+                draggingNode = null;
+                localStorage.setItem('scada_pin_positions', JSON.stringify(this.state.pins));
+            };
+
+            for (let i = 1; i <= this.config.NODE_COUNT; i++) {
+                const badge = this.refs.badges[i];
+                badge.addEventListener('mousedown', (e) => {
+                    if (!this.state.editPinMode) return;
+                    e.stopPropagation();
+                    e.preventDefault();
+                    draggingNode = i;
+                });
+                badge.addEventListener('touchstart', (e) => {
+                    if (!this.state.editPinMode) return;
+                    e.stopPropagation();
+                    draggingNode = i;
+                }, { passive: true });
+            }
+
+            window.addEventListener('mousemove', onPointerMove, { passive: false });
+            window.addEventListener('mouseup', onPointerUp);
+            window.addEventListener('touchmove', onPointerMove, { passive: false });
+            window.addEventListener('touchend', onPointerUp);
+        }
+
+        handleBadgeClick(nodeId) {
+            if (this.state.editPinMode) return;
+            this.openChart(nodeId);
         }
 
         // ---------- FIT TO SCREEN & DYNAMIC BADGE SCALING ----------
@@ -743,7 +915,7 @@
             let startX = 0, startY = 0, scrollLeft = 0, scrollTop = 0;
 
             slider.addEventListener('mousedown', (e) => {
-                if (e.button !== 0) return;
+                if (e.button !== 0 || this.state.editPinMode) return;
                 isMouseDown = true;
                 wasDragging = false;
                 slider.classList.add('cursor-grabbing');
@@ -807,7 +979,7 @@
                     wasDragging = true;
                     initialPinchDist = getDistance(e.touches[0], e.touches[1]);
                     initialPinchZoom = this.state.mapZoom;
-                } else if (e.touches.length === 1) {
+                } else if (e.touches.length === 1 && !this.state.editPinMode) {
                     isTouchPanning = true;
                     isPinching = false;
                     wasDragging = false;
@@ -856,7 +1028,7 @@
                         pinchRaf = null;
                     }
                 }
-                if (e.touches.length === 1) {
+                if (e.touches.length === 1 && !this.state.editPinMode) {
                     isTouchPanning = true;
                     touchStartX = e.touches[0].clientX;
                     touchStartY = e.touches[0].clientY;
@@ -927,7 +1099,7 @@
                 badge.addEventListener('keydown', (e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
                         e.preventDefault();
-                        this.openChart(i);
+                        this.handleBadgeClick(i);
                     }
                 });
             }
