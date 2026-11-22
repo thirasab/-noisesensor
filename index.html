@@ -236,13 +236,21 @@
             </div>
         </div>
 
-        <!-- แถบแสดงพิกัดเมื่อเปิดโหมดปรับตำแหน่งจุด -->
+        <!-- แถบปรับและบันทึกพิกัดจุด 1-5 ลง Google Sheet -->
         <div id="pin-coord-bar" class="hidden mt-2 pt-2 border-t border-slate-700">
-            <div class="flex flex-wrap items-center justify-center gap-2 bg-sky-950/60 p-1.5 rounded border border-sky-700 text-[10px] md:text-xs">
-                <span class="font-bold text-sky-300">📍 ลากการ์ด 1-5 ไปวางตรงจุดที่ต้องการ:</span>
+            <div class="flex flex-wrap items-center justify-center gap-2 bg-sky-950/70 p-2 rounded border border-sky-700 text-[10px] md:text-xs">
+                <span class="font-bold text-sky-300">📍 ลากการ์ด 1-5 ไปวางตรงจุด:</span>
                 <span id="pin-coord-readout" class="font-mono text-slate-200"></span>
-                <button type="button" onclick="app.resetPinPositions()" class="px-2 py-0.5 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded border border-slate-500">รีเซ็ตค่าเริ่มต้น</button>
-                <button type="button" onclick="app.copyPinPositions()" class="px-2 py-0.5 bg-sky-600 hover:bg-sky-500 text-white font-bold rounded">📋 คัดลอกพิกัด</button>
+                <div class="flex items-center gap-1.5">
+                    <button type="button" onclick="app.resetPinPositions()"
+                        class="px-2 py-1 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded border border-slate-500">
+                        ↩️ ค่าเริ่มต้น
+                    </button>
+                    <button type="button" id="btn-save-pins" onclick="app.savePinsToSheet()"
+                        class="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded border border-emerald-400">
+                        ☁️ บันทึกลง Sheet
+                    </button>
+                </div>
             </div>
         </div>
     </header>
@@ -409,6 +417,7 @@
                 mapZoom: 1,
                 saveAlarmTimer: null,
                 syncingAlarm: false,
+                syncingPins: false,
                 offsets: [0, 0, 0, 0, 0, 0],
                 editPinMode: false,
                 pins: {}
@@ -420,6 +429,7 @@
         init() {
             this.cacheRefs();
             this.loadPinPositions();
+            this.fetchPinsFromSheet(true);
             this.setupFitAndScale();
             this.setupMapZoom();
             this.setupPinDrag();
@@ -435,6 +445,7 @@
             this.refs.btnAudioDesk     = document.getElementById('btn-audio-desktop');
             this.refs.btnEditPin       = document.getElementById('btn-edit-pin');
             this.refs.btnEditPinMobile = document.getElementById('btn-edit-pin-mobile');
+            this.refs.btnSavePins      = document.getElementById('btn-save-pins');
             this.refs.pinCoordBar      = document.getElementById('pin-coord-bar');
             this.refs.pinCoordReadout  = document.getElementById('pin-coord-readout');
             this.refs.limitWarn        = document.getElementById('limit-warn');
@@ -472,7 +483,7 @@
             }
         }
 
-        // ---------- PIN POSITIONS & EDIT MODE ----------
+        // ---------- PIN POSITIONS & GOOGLE SHEET SYNC ----------
         loadPinPositions() {
             let saved = null;
             try {
@@ -481,8 +492,8 @@
 
             for (let i = 1; i <= this.config.NODE_COUNT; i++) {
                 const def = this.config.DEFAULT_PINS[i];
-                const top = (saved && saved[i] && Number.isFinite(saved[i].top)) ? saved[i].top : def.top;
-                const left = (saved && saved[i] && Number.isFinite(saved[i].left)) ? saved[i].left : def.left;
+                const top = (saved && saved[i] && Number.isFinite(Number(saved[i].top))) ? Number(saved[i].top) : def.top;
+                const left = (saved && saved[i] && Number.isFinite(Number(saved[i].left))) ? Number(saved[i].left) : def.left;
                 this.state.pins[i] = { top, left };
                 this.applyPinStyle(i);
             }
@@ -517,7 +528,7 @@
                 this.refs.btnEditPin.classList.replace('text-sky-300', 'text-white');
                 this.refs.btnEditPinMobile.classList.replace('bg-slate-700', 'bg-sky-600');
                 this.refs.btnEditPinMobile.classList.replace('text-sky-300', 'text-white');
-                this.showToast('📍 เปิดโหมดย้ายจุด: ลากการ์ดไปยังตำแหน่งที่ต้องการ', 'info');
+                this.showToast('📍 ลากการ์ดไปวางตรงจุด แล้วกด "บันทึกลง Sheet"', 'info');
             } else {
                 this.refs.btnEditPin.classList.replace('bg-sky-600', 'bg-slate-700');
                 this.refs.btnEditPin.classList.replace('text-white', 'text-sky-300');
@@ -528,24 +539,94 @@
         }
 
         resetPinPositions() {
-            localStorage.removeItem('scada_pin_positions');
-            this.loadPinPositions();
-            this.showToast('รีเซ็ตตำแหน่งจุด 1-5 กลับค่าเริ่มต้นแล้ว', 'info');
+            for (let i = 1; i <= this.config.NODE_COUNT; i++) {
+                this.state.pins[i] = { ...this.config.DEFAULT_PINS[i] };
+                this.applyPinStyle(i);
+            }
+            localStorage.setItem('scada_pin_positions', JSON.stringify(this.state.pins));
+            this.updatePinReadout();
+            this.showToast('↩️ รีเซ็ตพิกัดกลับค่าเริ่มต้นแล้ว (กดบันทึกลง Sheet เพื่อยืนยัน)', 'info');
         }
 
-        copyPinPositions() {
-            const lines = [];
-            for (let i = 1; i <= this.config.NODE_COUNT; i++) {
-                const p = this.state.pins[i];
-                lines.push(`จุดที่ ${i}: top: ${p.top}%; left: ${p.left}%;`);
-            }
-            const text = lines.join('\n');
-            if (navigator.clipboard && navigator.clipboard.writeText) {
-                navigator.clipboard.writeText(text).then(() => {
-                    this.showToast('📋 คัดลอกค่าพิกัด top/left แล้ว', 'success');
+        async fetchPinsFromSheet(isInitial = false) {
+            if (this.state.syncingPins || this.state.editPinMode) return;
+            this.state.syncingPins = true;
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), this.config.FETCH_TIMEOUT);
+                const res = await fetch(`${this.config.SCRIPT_URL}?action=getPins`, {
+                    signal: controller.signal
                 });
-            } else {
-                this.showToast(text, 'info');
+                clearTimeout(timeoutId);
+                const data = await res.json();
+
+                if (data && data.pins) {
+                    let changed = false;
+                    for (let i = 1; i <= this.config.NODE_COUNT; i++) {
+                        const remotePin = data.pins[i] || data.pins[String(i)];
+                        if (!remotePin) continue;
+                        const topVal = this.parseSensorNumber(remotePin.top);
+                        const leftVal = this.parseSensorNumber(remotePin.left);
+                        if (topVal !== null && leftVal !== null) {
+                            if (this.state.pins[i].top !== topVal || this.state.pins[i].left !== leftVal) {
+                                changed = true;
+                            }
+                            this.state.pins[i] = { top: topVal, left: leftVal };
+                            this.applyPinStyle(i);
+                        }
+                    }
+                    if (changed) {
+                        localStorage.setItem('scada_pin_positions', JSON.stringify(this.state.pins));
+                        this.updatePinReadout();
+                        if (!isInitial) {
+                            this.showToast('📍 อัปเดตตำแหน่งจุดจาก Sheet แล้ว', 'info');
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error('Fetch Pins Error:', err);
+            } finally {
+                this.state.syncingPins = false;
+            }
+        }
+
+        async savePinsToSheet() {
+            if (this.state.syncingPins) return;
+            this.state.syncingPins = true;
+            const btn = this.refs.btnSavePins;
+            const oldText = btn.textContent;
+            btn.textContent = '⏳ กำลังบันทึก...';
+            btn.disabled = true;
+
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), this.config.FETCH_TIMEOUT);
+                const res = await fetch(this.config.SCRIPT_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({
+                        action: 'setPins',
+                        pins: this.state.pins
+                    }),
+                    signal: controller.signal
+                });
+                clearTimeout(timeoutId);
+                const result = await res.json();
+
+                if (result && result.status === 'ok') {
+                    localStorage.setItem('scada_pin_positions', JSON.stringify(this.state.pins));
+                    this.showToast('☁️ บันทึกพิกัดจุด 1-5 ลง Sheet (Pin_Config) แล้ว!', 'success');
+                    if (this.state.editPinMode) this.toggleEditPin();
+                } else {
+                    throw new Error('Save failed');
+                }
+            } catch (err) {
+                console.error('Save Pins Error:', err);
+                this.showToast('⚠️ บันทึกพิกัดลง Sheet ไม่สำเร็จ', 'error');
+            } finally {
+                btn.textContent = oldText;
+                btn.disabled = false;
+                this.state.syncingPins = false;
             }
         }
 
@@ -775,6 +856,7 @@
                 if (this.refs.offInputs.includes(activeEl)) return;
                 if (this.state.saveAlarmTimer) return;
                 this.fetchAlarmLimitsFromSheet(false);
+                this.fetchPinsFromSheet(false);
             }, this.config.ALARM_SYNC_MS);
         }
 
