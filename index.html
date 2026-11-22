@@ -14,25 +14,37 @@
         .cursor-grab { cursor: grab; }
         .cursor-grabbing { cursor: grabbing !important; }
 
-        .map-container { position: relative; display: block; width: 100%; transition: width 0.3s ease-out; }
+        /* กล่องแผนที่ปรับขนาดตามภาพจริง เพื่อรักษาพิกัด % ของ Badge ให้ตรงตำแหน่งเสมอ */
+        .map-container {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+            --badge-scale: 0.85;
+            transition: width 0.25s ease-out;
+        }
 
-        /* ===== Badge: ขนาดเท่าเดิม ===== */
+        /* ===== Badge: ย่อ-ขยายตามสัดส่วนความกว้างของแผนที่อัตโนมัติ ===== */
         .sensor-badge {
             position: absolute;
-            transform: translate(-50%, -50%) scale(0.60);
+            transform: translate(-50%, -50%) scale(var(--badge-scale));
             transform-origin: center center;
-            transition: transform 0.15s ease, border-color 0.2s ease, background-color 0.2s ease;
+            transition: transform 0.12s ease, border-color 0.2s ease, background-color 0.2s ease;
             cursor: pointer;
             user-select: none;
+            z-index: 5;
         }
-        @media (min-width: 768px) {
-            .sensor-badge { transform: translate(-50%, -50%) scale(0.85); }
+        .sensor-badge:hover {
+            z-index: 15;
+            transform: translate(-50%, -50%) scale(calc(var(--badge-scale) * 1.08));
         }
-        .sensor-badge:active { transform: translate(-50%, -50%) scale(0.55); filter: brightness(1.2); }
-        @media (min-width: 768px) { .sensor-badge:active { transform: translate(-50%, -50%) scale(0.80); } }
+        .sensor-badge:active {
+            transform: translate(-50%, -50%) scale(calc(var(--badge-scale) * 0.94));
+            filter: brightness(1.2);
+        }
         .sensor-badge:focus-visible {
             outline: 2px solid #34d399;
             outline-offset: 2px;
+            z-index: 15;
         }
 
         /* ===== Alarm states ===== */
@@ -112,42 +124,42 @@
         }
     </style>
 </head>
-<body class="bg-slate-950 text-slate-200 font-sans min-h-screen flex flex-col p-1 md:p-4">
+<body class="bg-slate-950 text-slate-200 font-sans h-dvh overflow-hidden flex flex-col p-1.5 md:p-3">
 
     <!-- Header -->
-    <header class="mb-2 bg-slate-900 border border-slate-700 rounded-lg p-2 shadow-lg">
-        <div class="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-2">
+    <header id="app-header" class="shrink-0 mb-1.5 bg-slate-900 border border-slate-700 rounded-lg p-2 shadow-lg">
+        <div class="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-1.5">
             <div class="flex justify-between items-center">
                 <div>
-                    <h1 class="text-sm md:text-xl font-bold text-emerald-400 tracking-wide">SCG CEMENT</h1>
-                    <p class="text-[9px] md:text-sm mt-0.5" id="connection-status" aria-live="polite">🟡 Connecting...</p>
+                    <h1 class="text-sm md:text-lg font-bold text-emerald-400 tracking-wide leading-tight">SCG CEMENT</h1>
+                    <p class="text-[9px] md:text-xs mt-0.5" id="connection-status" aria-live="polite">🟡 Connecting...</p>
                 </div>
                 <div class="flex items-center gap-1.5 md:hidden">
                     <button type="button" onclick="app.toggleCalibPanel()"
-                        class="px-2.5 py-1.5 bg-slate-700 text-emerald-300 text-[10px] font-bold rounded border border-slate-500 min-h-[32px]">
+                        class="px-2 py-1 bg-slate-700 text-emerald-300 text-[10px] font-bold rounded border border-slate-500 min-h-[30px]">
                         🎛️ ชดเชย
                     </button>
                     <button type="button" id="btn-audio" onclick="app.toggleAudio()"
-                        class="px-3 py-1.5 bg-rose-600 text-white text-[10px] font-bold rounded border border-rose-400 shadow min-h-[32px]">
+                        class="px-2.5 py-1 bg-rose-600 text-white text-[10px] font-bold rounded border border-rose-400 shadow min-h-[30px]">
                         🔇 เปิดเสียง
                     </button>
                 </div>
             </div>
 
-            <div class="flex justify-center md:justify-start bg-slate-800 p-1.5 rounded border border-slate-600">
-                <div class="flex flex-row items-center justify-center gap-3 w-full md:w-auto px-2">
-                    <div class="flex flex-col items-center">
-                        <label for="limit-warn" class="text-[9px] md:text-[10px] font-bold text-amber-400">⚠️ Warn (dBA)</label>
+            <div class="flex justify-center md:justify-start bg-slate-800 px-2 py-1 rounded border border-slate-600">
+                <div class="flex flex-row items-center justify-center gap-3 w-full md:w-auto">
+                    <div class="flex items-center gap-1.5 md:flex-col md:gap-0">
+                        <label for="limit-warn" class="text-[9px] md:text-[10px] font-bold text-amber-400">⚠️ Warn</label>
                         <input type="number" id="limit-warn" min="30" max="150" step="1" value="85"
-                            class="w-16 bg-slate-900 border border-slate-500 rounded px-1 py-0.5 text-xs text-center focus:outline-none focus:border-amber-400">
+                            class="w-14 md:w-16 bg-slate-900 border border-slate-500 rounded px-1 py-0.5 text-xs text-center focus:outline-none focus:border-amber-400">
                     </div>
-                    <div class="flex flex-col items-center">
-                        <label for="limit-crit" class="text-[9px] md:text-[10px] font-bold text-rose-400">🚨 Crit (dBA)</label>
+                    <div class="flex items-center gap-1.5 md:flex-col md:gap-0">
+                        <label for="limit-crit" class="text-[9px] md:text-[10px] font-bold text-rose-400">🚨 Crit</label>
                         <input type="number" id="limit-crit" min="30" max="150" step="1" value="95"
-                            class="w-16 bg-slate-900 border border-slate-500 rounded px-1 py-0.5 text-xs text-center focus:outline-none focus:border-rose-400">
+                            class="w-14 md:w-16 bg-slate-900 border border-slate-500 rounded px-1 py-0.5 text-xs text-center focus:outline-none focus:border-rose-400">
                     </div>
-                    <div class="flex flex-col items-center justify-center">
-                        <span class="text-[8px] md:text-[9px] text-slate-400">Sheet Sync</span>
+                    <div class="flex items-center gap-1 md:flex-col md:gap-0 justify-center">
+                        <span class="text-[8px] md:text-[9px] text-slate-400">Sync</span>
                         <span id="alarm-sync-status" class="text-[10px] md:text-xs font-mono text-slate-300">⏳</span>
                     </div>
                 </div>
@@ -155,21 +167,21 @@
 
             <div class="hidden md:flex items-center gap-2">
                 <button type="button" onclick="app.toggleCalibPanel()" title="ตั้งค่าชดเชย dBA"
-                    class="px-2.5 py-1.5 bg-slate-700 hover:bg-slate-600 text-emerald-300 text-xs font-bold rounded border border-slate-500 min-h-[32px]">
+                    class="px-2.5 py-1 bg-slate-700 hover:bg-slate-600 text-emerald-300 text-xs font-bold rounded border border-slate-500 min-h-[30px]">
                     🎛️ ชดเชย dBA
                 </button>
                 <button type="button" onclick="app.testSiren()" title="ทดสอบเสียง"
-                    class="px-2 py-1.5 bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold rounded border border-slate-500 min-h-[32px]">
+                    class="px-2 py-1 bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold rounded border border-slate-500 min-h-[30px]">
                     🔔
                 </button>
                 <button type="button" id="btn-audio-desktop" onclick="app.toggleAudio()"
-                    class="px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold rounded border border-rose-400 flex items-center gap-1 min-h-[32px]">
+                    class="px-3 py-1 bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold rounded border border-rose-400 flex items-center gap-1 min-h-[30px]">
                     🔇 ระบบเสียงปิดอยู่
                 </button>
             </div>
         </div>
 
-        <!-- แถบตั้งค่าชดเชย Offset dBA แยกจุดที่ 1-5 (ซ่อนอยู่จนกว่าจะกดปุ่ม ชดเชย dBA) -->
+        <!-- แถบตั้งค่าชดเชย Offset dBA แยกจุดที่ 1-5 -->
         <div id="calib-panel" class="hidden mt-2 pt-2 border-t border-slate-700">
             <div class="flex flex-wrap items-center justify-center gap-2 bg-slate-800/90 p-2 rounded border border-slate-600">
                 <span class="text-[10px] md:text-xs font-bold text-emerald-400 w-full md:w-auto text-center">🎛️ Offset ชดเชย (dBA):</span>
@@ -201,23 +213,25 @@
         </div>
     </header>
 
-    <div class="text-center text-[9px] md:text-xs text-slate-400 mb-1">
+    <div class="shrink-0 text-center text-[9px] md:text-xs text-slate-400 mb-1">
         👆 แตะการ์ดเพื่อดูกราฟ (dBA) | 💻 ปุ่มซูม/ลากเมาส์ | ⚠️ Warning | 🚨 Critical | ✕ รับทราบ
     </div>
 
     <div id="toast-container" class="fixed top-4 right-4 z-[60] flex flex-col gap-2 pointer-events-none"></div>
 
-    <!-- Map -->
-    <div class="relative w-full bg-slate-800 rounded-lg border border-slate-700 shadow-xl overflow-hidden group">
-        <div class="absolute top-2 right-2 z-10 hidden md:flex flex-col gap-1 bg-slate-900/80 p-1.5 rounded-lg border border-slate-600 shadow-xl">
-            <button type="button" onclick="app.zoomMap(20)" aria-label="ซูมเข้า" class="w-8 h-8 flex items-center justify-center bg-slate-700 hover:bg-emerald-600 text-white font-bold rounded transition">➕</button>
-            <button type="button" onclick="app.resetZoom()" aria-label="พอดีหน้าจอ" class="w-8 h-8 flex items-center justify-center bg-slate-700 hover:bg-blue-600 text-white font-bold rounded transition text-xs">FIT</button>
-            <button type="button" onclick="app.zoomMap(-20)" aria-label="ซูมออก" class="w-8 h-8 flex items-center justify-center bg-slate-700 hover:bg-rose-600 text-white font-bold rounded transition">➖</button>
+    <!-- Map Area (ขยายเต็มพื้นที่ความสูงที่เหลือแบบพอดีจอ ไม่เกิด Scrollbar หลัก) -->
+    <main id="map-viewport" class="relative flex-1 min-h-0 w-full bg-slate-900 rounded-lg border border-slate-700 shadow-xl overflow-hidden flex items-center justify-center">
+        <!-- ปุ่มซูม (รองรับทั้งมือถือและคอม) -->
+        <div class="absolute top-2 right-2 z-20 flex flex-col gap-1 bg-slate-900/85 p-1 rounded-lg border border-slate-600 shadow-xl">
+            <button type="button" onclick="app.zoomMap(25)" aria-label="ซูมเข้า" class="w-7 h-7 md:w-8 md:h-8 flex items-center justify-center bg-slate-700 hover:bg-emerald-600 text-white font-bold rounded transition text-xs">➕</button>
+            <button type="button" onclick="app.resetZoom()" aria-label="พอดีหน้าจอ" class="w-7 h-7 md:w-8 md:h-8 flex items-center justify-center bg-slate-700 hover:bg-blue-600 text-white font-bold rounded transition text-[10px] md:text-xs">FIT</button>
+            <button type="button" onclick="app.zoomMap(-25)" aria-label="ซูมออก" class="w-7 h-7 md:w-8 md:h-8 flex items-center justify-center bg-slate-700 hover:bg-rose-600 text-white font-bold rounded transition text-xs">➖</button>
         </div>
 
-        <div id="map-scroll-wrapper" class="w-full overflow-auto hide-scroll cursor-grab max-h-[80vh]">
-            <div id="map-container" class="map-container" style="width: 100%;">
-                <img src="map-bg.jpg" alt="Plant Map" class="w-full h-auto block opacity-80 pointer-events-none">
+        <div id="map-scroll-wrapper" class="w-full h-full overflow-auto hide-scroll cursor-grab flex items-center justify-center">
+            <!-- กล่องนี้จะถูกคำนวณความกว้างให้ภาพพอดีความสูง/ความกว้างหน้าจอเป๊ะ 100% -->
+            <div id="map-container" class="map-container shrink-0">
+                <img id="plant-map-img" src="map-bg.jpg" alt="Plant Map" class="w-full h-auto block opacity-85 pointer-events-none select-none">
 
                 <!-- จุดที่ 1 -->
                 <div id="badge-1" onclick="app.openChart(1)" role="button" tabindex="0"
@@ -285,7 +299,7 @@
                 </div>
             </div>
         </div>
-    </div>
+    </main>
 
     <!-- Chart Modal -->
     <div id="chart-modal" role="dialog" aria-modal="true" aria-labelledby="chart-title"
@@ -332,7 +346,8 @@
                 DEFAULT_WARN: 85,
                 DEFAULT_CRIT: 95,
                 FETCH_TIMEOUT: 10000,
-                ALARM_SYNC_MS: 30000
+                ALARM_SYNC_MS: 30000,
+                BASE_MAP_WIDTH: 1200 // ความกว้างอ้างอิงที่สเกลการ์ด = 1.0
             };
 
             this.refs = {};
@@ -351,10 +366,10 @@
                 lastData: null,
                 rafId: null,
                 criticalActive: false,
-                mapZoom: 100,
+                mapZoom: 1, // ตัวคูณการซูม (1 = พอดีจอ)
                 saveAlarmTimer: null,
                 syncingAlarm: false,
-                offsets: [0, 0, 0, 0, 0, 0] // Index 1-5
+                offsets: [0, 0, 0, 0, 0, 0]
             };
 
             this.init();
@@ -362,6 +377,7 @@
 
         init() {
             this.cacheRefs();
+            this.setupFitAndScale();
             this.setupMapZoom();
             this.setupBadgeKeyboard();
             this.setupModalDismiss();
@@ -377,8 +393,10 @@
             this.refs.limitCrit       = document.getElementById('limit-crit');
             this.refs.alarmSyncStatus = document.getElementById('alarm-sync-status');
             this.refs.calibPanel      = document.getElementById('calib-panel');
+            this.refs.mapViewport     = document.getElementById('map-viewport');
             this.refs.mapContainer    = document.getElementById('map-container');
             this.refs.mapScroll       = document.getElementById('map-scroll-wrapper');
+            this.refs.mapImg          = document.getElementById('plant-map-img');
             this.refs.modal           = document.getElementById('chart-modal');
             this.refs.modalTitle      = document.getElementById('chart-title');
             this.refs.loadingText     = document.getElementById('loading-text');
@@ -406,8 +424,66 @@
             }
         }
 
+        // ---------- FIT TO SCREEN & DYNAMIC BADGE SCALING ----------
+        setupFitAndScale() {
+            const recalc = () => this.fitMapToViewport();
+
+            if (this.refs.mapImg.complete && this.refs.mapImg.naturalWidth > 0) {
+                recalc();
+            } else {
+                this.refs.mapImg.addEventListener('load', recalc);
+            }
+
+            // ตรวจจับการย่อ-ขยายหน้าจอ หรือการเปิด-ปิดแผงชดเชย dBA แบบเรียลไทม์
+            if (window.ResizeObserver) {
+                const ro = new ResizeObserver(() => recalc());
+                ro.observe(this.refs.mapViewport);
+            } else {
+                window.addEventListener('resize', recalc);
+            }
+        }
+
+        fitMapToViewport() {
+            const vp = this.refs.mapViewport;
+            const img = this.refs.mapImg;
+            if (!vp || !img) return;
+
+            const vpW = vp.clientWidth;
+            const vpH = vp.clientHeight;
+            if (vpW <= 0 || vpH <= 0) return;
+
+            // อัตราส่วนภาพจริง (ถ้าภาพยังโหลดไม่เสร็จใช้ 16:9 เป็นค่าเริ่มต้น)
+            const natW = img.naturalWidth || 1600;
+            const natH = img.naturalHeight || 900;
+            const imgAspect = natW / natH;
+            const vpAspect = vpW / vpH;
+
+            // คำนวณความกว้างที่ทำให้ภาพพอดีกรอบ 100% ทั้งแนวตั้งและแนวนอน (Contain)
+            let fitWidth = vpW;
+            if (vpAspect > imgAspect) {
+                // จอกว้างกว่าภาพ -> ยึดความสูงเป็นหลัก
+                fitWidth = vpH * imgAspect;
+            }
+
+            // คูณด้วยระดับการซูมปัจจุบัน
+            const targetWidth = Math.round(fitWidth * this.state.mapZoom);
+            this.refs.mapContainer.style.width = targetWidth + 'px';
+
+            // ปรับการจัดวางเมื่อซูมเกินกรอบเพื่อให้เลื่อนดูขอบซ้าย/บนได้ไม่ถูกตัด
+            if (this.state.mapZoom > 1) {
+                this.refs.mapScroll.classList.remove('items-center', 'justify-center');
+            } else {
+                this.refs.mapScroll.classList.add('items-center', 'justify-center');
+            }
+
+            // คำนวณสเกลของการ์ดแปรผันตรงตามความกว้างจริงของแผนที่ (จำกัดช่วง 0.38 - 1.35 เพื่อให้อ่านง่ายเสมอ)
+            const badgeScale = Math.max(0.38, Math.min(1.35, targetWidth / this.config.BASE_MAP_WIDTH));
+            this.refs.mapContainer.style.setProperty('--badge-scale', badgeScale.toFixed(3));
+        }
+
         toggleCalibPanel() {
             this.refs.calibPanel.classList.toggle('hidden');
+            this.fitMapToViewport();
         }
 
         // ---------- SAFE NUMBER PARSER ----------
@@ -430,9 +506,9 @@
 
                 const onStyle = 'bg-emerald-600 text-white border-emerald-400';
                 this.refs.btnAudio.textContent = '🔊 เสียงทำงาน';
-                this.refs.btnAudio.className = `md:hidden px-3 py-1.5 text-[10px] font-bold rounded border shadow min-h-[32px] ${onStyle}`;
+                this.refs.btnAudio.className = `md:hidden px-2.5 py-1 text-[10px] font-bold rounded border shadow min-h-[30px] ${onStyle}`;
                 this.refs.btnAudioDesk.textContent = '🔊 เสียงทำงาน';
-                this.refs.btnAudioDesk.className = `hidden md:flex px-3 py-1.5 text-xs font-bold rounded border items-center gap-1 min-h-[32px] ${onStyle}`;
+                this.refs.btnAudioDesk.className = `hidden md:flex px-3 py-1 text-xs font-bold rounded border items-center gap-1 min-h-[30px] ${onStyle}`;
                 this.showToast('🔊 ระบบเสียงเปิด', 'success');
             } else {
                 this.state.audioEnabled = false;
@@ -440,9 +516,9 @@
 
                 const redStyle = 'bg-rose-600 text-white border-rose-400';
                 this.refs.btnAudio.textContent = '🔇 เปิดเสียง';
-                this.refs.btnAudio.className = `md:hidden px-3 py-1.5 text-[10px] font-bold rounded border shadow min-h-[32px] ${redStyle}`;
+                this.refs.btnAudio.className = `md:hidden px-2.5 py-1 text-[10px] font-bold rounded border shadow min-h-[30px] ${redStyle}`;
                 this.refs.btnAudioDesk.textContent = '🔇 ระบบเสียงปิดอยู่';
-                this.refs.btnAudioDesk.className = `hidden md:flex px-3 py-1.5 hover:bg-rose-500 text-xs font-bold rounded border items-center gap-1 min-h-[32px] ${redStyle}`;
+                this.refs.btnAudioDesk.className = `hidden md:flex px-3 py-1 hover:bg-rose-500 text-xs font-bold rounded border items-center gap-1 min-h-[30px] ${redStyle}`;
             }
         }
 
@@ -545,7 +621,6 @@
                 localStorage.setItem('scada_offset_' + i, String(val));
             }
 
-            // อัปเดตการแสดงผลบนแผนที่ทันที
             if (this.state.lastData) this.applyData(this.state.lastData);
 
             const { warn, crit } = this.getLimits();
@@ -700,14 +775,15 @@
             }, true);
         }
 
-        zoomMap(step) {
-            this.state.mapZoom = Math.max(100, Math.min(400, this.state.mapZoom + step));
-            this.refs.mapContainer.style.width = this.state.mapZoom + '%';
+        zoomMap(stepPercent) {
+            const delta = stepPercent / 100;
+            this.state.mapZoom = Math.max(1, Math.min(4, Number((this.state.mapZoom + delta).toFixed(2))));
+            this.fitMapToViewport();
         }
 
         resetZoom() {
-            this.state.mapZoom = 100;
-            this.refs.mapContainer.style.width = '100%';
+            this.state.mapZoom = 1;
+            this.fitMapToViewport();
         }
 
         // ---------- A11Y & MODAL DISMISS ----------
@@ -770,7 +846,6 @@
                 try {
                     const data = JSON.parse(payload.toString());
                     if (!data || typeof data !== 'object') return;
-                    // รวมข้อมูลจาก Node 1 และ Node 2 ไว้ใน lastData เดียวกัน
                     const merged = Object.assign({}, this.state.lastData || {}, data);
                     this.queueUpdate(merged);
                     this.updateStatus('🟢 Connected (Live)', 'emerald');
@@ -784,9 +859,9 @@
 
         updateStatus(text, color) {
             const map = {
-                emerald: 'text-[9px] md:text-sm text-emerald-400 mt-0.5 font-bold',
-                amber:   'text-[9px] md:text-sm text-amber-400 mt-0.5 font-bold',
-                red:     'text-[9px] md:text-sm text-red-400 mt-0.5 font-bold'
+                emerald: 'text-[9px] md:text-xs text-emerald-400 mt-0.5 font-bold',
+                amber:   'text-[9px] md:text-xs text-amber-400 mt-0.5 font-bold',
+                red:     'text-[9px] md:text-xs text-red-400 mt-0.5 font-bold'
             };
             this.refs.status.textContent = text;
             this.refs.status.className = map[color] || map.emerald;
@@ -816,7 +891,6 @@
                 const valH = this.parseSensorNumber(data['h' + i]);
                 const rawOrCompN = this.parseSensorNumber(data['n' + i]);
 
-                // คำนวณค่าชดเชย dBA โดยหักค่า offset ที่ ESP32 บวกมาแล้วออกก่อน แล้วบวกค่า offset ล่าสุดบน Web (ป้องกันการบวกซ้ำซ้อน)
                 let valN = null;
                 if (rawOrCompN !== null) {
                     const espAppliedOff = this.parseSensorNumber(data['off' + i]) ?? 0;
