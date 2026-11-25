@@ -27,23 +27,27 @@
             flex-shrink: 0;
             margin: auto;
             line-height: 0;
-            --badge-scale: 0.85;
+            --badge-scale: 1;
         }
 
-        /* ===== Badge: ย่อ-ขยายตามสัดส่วนความกว้างของแผนที่อัตโนมัติ ===== */
+        /* ===== Badge บนแผนที่ ===== */
         .sensor-badge {
             position: absolute;
             line-height: 1.2;
             transform: translate(-50%, -50%) scale(var(--badge-scale));
             transform-origin: center center;
-            transition: border-color 0.2s ease, background-color 0.2s ease;
+            transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
             cursor: pointer;
             user-select: none;
             z-index: 5;
+            backdrop-filter: blur(4px);
         }
-        .sensor-badge:hover {
+        .sensor-badge:hover,
+        .sensor-badge.is-highlighted {
             z-index: 15;
-            transform: translate(-50%, -50%) scale(calc(var(--badge-scale) * 1.08));
+            transform: translate(-50%, -50%) scale(calc(var(--badge-scale) * 1.12));
+            border-color: #34d399 !important;
+            box-shadow: 0 0 18px rgba(52, 211, 153, 0.55);
         }
         .sensor-badge:active {
             transform: translate(-50%, -50%) scale(calc(var(--badge-scale) * 0.94));
@@ -65,13 +69,13 @@
 
         /* ===== Alarm states ===== */
         @keyframes scada-warn-pulse {
-            0%, 100% { border-color: #f59e0b; }
-            50% { border-color: #d97706; }
+            0%, 100% { border-color: #f59e0b; box-shadow: 0 0 10px rgba(245, 158, 11, 0.35); }
+            50% { border-color: #d97706; box-shadow: 0 0 4px rgba(245, 158, 11, 0.15); }
         }
         @keyframes scada-crit-blink {
-            0% { background-color: rgba(127, 29, 29, 0.95); border-color: #ef4444; }
-            50% { background-color: rgba(69, 10, 10, 0.9); border-color: #7f1d1d; }
-            100% { background-color: rgba(127, 29, 29, 0.95); border-color: #ef4444; }
+            0% { background-color: rgba(127, 29, 29, 0.95); border-color: #ef4444; box-shadow: 0 0 16px rgba(239, 68, 68, 0.6); }
+            50% { background-color: rgba(69, 10, 10, 0.92); border-color: #7f1d1d; box-shadow: none; }
+            100% { background-color: rgba(127, 29, 29, 0.95); border-color: #ef4444; box-shadow: 0 0 16px rgba(239, 68, 68, 0.6); }
         }
         .badge-warning { animation: scada-warn-pulse 1.5s infinite; }
         .badge-critical { animation: scada-crit-blink 0.8s infinite; color: #fca5a5; }
@@ -83,13 +87,13 @@
             color: #fca5a5;
         }
 
-        .alarm-text { color: #fca5a5 !important; font-weight: bold; }
-        .warn-text { color: #fbbf24 !important; font-weight: bold; }
+        .alarm-text { color: #fca5a5 !important; font-weight: 800; }
+        .warn-text { color: #fbbf24 !important; font-weight: 800; }
 
         .ack-btn {
             position: absolute;
             top: -6px; right: -6px;
-            width: 16px; height: 16px;
+            width: 17px; height: 17px;
             border-radius: 50%;
             display: flex; align-items: center; justify-content: center;
             font-size: 9px; font-weight: bold;
@@ -108,7 +112,7 @@
                 position: absolute;
                 left: 0; right: 0;
                 bottom: -14px;
-                font-size: 7px;
+                font-size: 8px;
                 line-height: 1;
                 color: #94a3b8;
                 text-align: center;
@@ -123,6 +127,9 @@
                 opacity: 1;
             }
         }
+
+        /* ซ่อนชื่อซ้ำซ้อนเมื่อฝังอยู่ใน iframe ของหน้าหลัก */
+        body.in-iframe .brand-block { display: none; }
 
         .toast { animation: toastIn 0.3s ease-out; }
         @keyframes toastIn {
@@ -140,75 +147,60 @@
         }
     </style>
 </head>
-<body class="bg-slate-950 text-slate-200 font-sans h-dvh overflow-hidden flex flex-col p-1.5 md:p-3">
+<body class="bg-slate-950 text-slate-200 font-sans h-dvh overflow-hidden flex flex-col p-1.5 md:p-2.5 gap-1.5">
 
-    <!-- Header -->
-    <header id="app-header" class="shrink-0 mb-1.5 bg-slate-900 border border-slate-700 rounded-lg p-2 shadow-lg">
-        <div class="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-1.5">
-            <div class="flex justify-between items-center">
-                <div>
-                    <h1 class="text-sm md:text-lg font-bold text-emerald-400 tracking-wide leading-tight">SCG CEMENT</h1>
-                    <p class="text-[9px] md:text-xs mt-0.5" id="connection-status" aria-live="polite">🟡 Connecting...</p>
+    <!-- Compact Single-Row Toolbar -->
+    <header id="app-header" class="shrink-0 bg-slate-900/95 border border-slate-700/80 rounded-lg px-2.5 py-1.5 shadow-lg">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+            <!-- สถานะและชื่อระบบ -->
+            <div class="flex items-center gap-2.5">
+                <div class="brand-block">
+                    <h1 class="text-sm md:text-base font-bold text-emerald-400 tracking-wide leading-none">SCG CEMENT</h1>
                 </div>
-                <div class="flex items-center gap-1 md:hidden">
-                    <button type="button" id="btn-edit-pin-mobile" onclick="app.toggleEditPin()"
-                        class="px-2 py-1 bg-slate-700 text-sky-300 text-[10px] font-bold rounded border border-slate-500 min-h-[30px]">
-                        📍 ย้ายจุด
-                    </button>
-                    <button type="button" onclick="app.toggleCalibPanel()"
-                        class="px-2 py-1 bg-slate-700 text-emerald-300 text-[10px] font-bold rounded border border-slate-500 min-h-[30px]">
-                        🎛️ ชดเชย
-                    </button>
-                    <button type="button" id="btn-audio" onclick="app.toggleAudio()"
-                        class="px-2.5 py-1 bg-rose-600 text-white text-[10px] font-bold rounded border border-rose-400 shadow min-h-[30px]">
-                        🔇 เปิดเสียง
-                    </button>
-                </div>
+                <span class="text-[10px] md:text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-800 border border-slate-700" id="connection-status" aria-live="polite">🟡 Connecting...</span>
             </div>
 
-            <div class="flex justify-center md:justify-start bg-slate-800 px-2 py-1 rounded border border-slate-600">
-                <div class="flex flex-row items-center justify-center gap-3 w-full md:w-auto">
-                    <div class="flex items-center gap-1.5 md:flex-col md:gap-0">
-                        <label for="limit-warn" class="text-[9px] md:text-[10px] font-bold text-amber-400">⚠️ Warn</label>
-                        <input type="number" id="limit-warn" min="30" max="150" step="1" value="85"
-                            class="w-14 md:w-16 bg-slate-900 border border-slate-500 rounded px-1 py-0.5 text-xs text-center focus:outline-none focus:border-amber-400">
-                    </div>
-                    <div class="flex items-center gap-1.5 md:flex-col md:gap-0">
-                        <label for="limit-crit" class="text-[9px] md:text-[10px] font-bold text-rose-400">🚨 Crit</label>
-                        <input type="number" id="limit-crit" min="30" max="150" step="1" value="95"
-                            class="w-14 md:w-16 bg-slate-900 border border-slate-500 rounded px-1 py-0.5 text-xs text-center focus:outline-none focus:border-rose-400">
-                    </div>
-                    <div class="flex items-center gap-1 md:flex-col md:gap-0 justify-center">
-                        <span class="text-[8px] md:text-[9px] text-slate-400">Sync</span>
-                        <span id="alarm-sync-status" class="text-[10px] md:text-xs font-mono text-slate-300">⏳</span>
-                    </div>
+            <!-- เกณฑ์แจ้งเตือน Warn / Crit -->
+            <div class="flex items-center gap-2 bg-slate-800/90 px-2.5 py-1 rounded-md border border-slate-700">
+                <div class="flex items-center gap-1">
+                    <label for="limit-warn" class="text-[10px] font-bold text-amber-400">⚠️ Warn</label>
+                    <input type="number" id="limit-warn" min="30" max="150" step="1" value="85"
+                        class="w-12 md:w-14 bg-slate-950 border border-slate-600 rounded px-1 py-0.5 text-xs text-center font-mono focus:outline-none focus:border-amber-400">
                 </div>
+                <span class="text-slate-600">|</span>
+                <div class="flex items-center gap-1">
+                    <label for="limit-crit" class="text-[10px] font-bold text-rose-400">🚨 Crit</label>
+                    <input type="number" id="limit-crit" min="30" max="150" step="1" value="95"
+                        class="w-12 md:w-14 bg-slate-950 border border-slate-600 rounded px-1 py-0.5 text-xs text-center font-mono focus:outline-none focus:border-rose-400">
+                </div>
+                <span id="alarm-sync-status" class="text-xs font-mono text-slate-300 pl-1" title="สถานะซิงก์ Google Sheet">⏳</span>
             </div>
 
-            <div class="hidden md:flex items-center gap-2">
+            <!-- ปุ่มเครื่องมือ -->
+            <div class="flex items-center gap-1.5">
                 <button type="button" id="btn-edit-pin" onclick="app.toggleEditPin()" title="ลากย้ายตำแหน่งการ์ดบนแผนที่"
-                    class="px-2.5 py-1 bg-slate-700 hover:bg-slate-600 text-sky-300 text-xs font-bold rounded border border-slate-500 min-h-[30px]">
-                    📍 ปรับตำแหน่งจุด
+                    class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-sky-300 text-[11px] font-semibold rounded border border-slate-600 transition">
+                    📍 ย้ายจุด
                 </button>
                 <button type="button" onclick="app.toggleCalibPanel()" title="ตั้งค่าชดเชย dBA"
-                    class="px-2.5 py-1 bg-slate-700 hover:bg-slate-600 text-emerald-300 text-xs font-bold rounded border border-slate-500 min-h-[30px]">
-                    🎛️ ชดเชย dBA
+                    class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-emerald-300 text-[11px] font-semibold rounded border border-slate-600 transition">
+                    🎛️ ชดเชย
                 </button>
                 <button type="button" onclick="app.testSiren()" title="ทดสอบเสียง"
-                    class="px-2 py-1 bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold rounded border border-slate-500 min-h-[30px]">
+                    class="hidden sm:inline-flex px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] font-semibold rounded border border-slate-600 transition">
                     🔔
                 </button>
-                <button type="button" id="btn-audio-desktop" onclick="app.toggleAudio()"
-                    class="px-3 py-1 bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold rounded border border-rose-400 flex items-center gap-1 min-h-[30px]">
-                    🔇 ระบบเสียงปิดอยู่
+                <button type="button" id="btn-audio" onclick="app.toggleAudio()"
+                    class="px-2.5 py-1 bg-rose-600 hover:bg-rose-500 text-white text-[11px] font-bold rounded border border-rose-400 shadow transition">
+                    🔇 เสียง: ปิด
                 </button>
             </div>
         </div>
 
         <!-- แถบตั้งค่าชดเชย Offset dBA แยกจุดที่ 1-5 -->
-        <div id="calib-panel" class="hidden mt-2 pt-2 border-t border-slate-700">
-            <div class="flex flex-wrap items-center justify-center gap-2 bg-slate-800/90 p-2 rounded border border-slate-600">
-                <span class="text-[10px] md:text-xs font-bold text-emerald-400 w-full md:w-auto text-center">🎛️ Offset ชดเชย (dBA):</span>
+        <div id="calib-panel" class="hidden mt-1.5 pt-1.5 border-t border-slate-700/80">
+            <div class="flex flex-wrap items-center justify-center gap-2 bg-slate-800/90 p-1.5 rounded border border-slate-600">
+                <span class="text-[10px] md:text-xs font-bold text-emerald-400">🎛️ Offset ชดเชย (dBA):</span>
                 <div class="flex items-center gap-1">
                     <label for="off-1" class="text-[10px] text-slate-300">จุด 1:</label>
                     <input type="number" id="off-1" step="0.1" min="-30" max="30" value="0" class="w-14 bg-slate-900 border border-slate-500 rounded px-1 py-0.5 text-xs text-center font-mono focus:border-emerald-400 focus:outline-none">
@@ -230,24 +222,24 @@
                     <input type="number" id="off-5" step="0.1" min="-30" max="30" value="0" class="w-14 bg-slate-900 border border-slate-500 rounded px-1 py-0.5 text-xs text-center font-mono focus:border-emerald-400 focus:outline-none">
                 </div>
                 <button type="button" onclick="app.saveCalibration()"
-                    class="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded border border-emerald-400">
-                    💾 บันทึกชดเชย
+                    class="px-2.5 py-0.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded border border-emerald-400">
+                    💾 บันทึก
                 </button>
             </div>
         </div>
 
         <!-- แถบปรับและบันทึกพิกัดจุด 1-5 ลง Google Sheet -->
-        <div id="pin-coord-bar" class="hidden mt-2 pt-2 border-t border-slate-700">
-            <div class="flex flex-wrap items-center justify-center gap-2 bg-sky-950/70 p-2 rounded border border-sky-700 text-[10px] md:text-xs">
+        <div id="pin-coord-bar" class="hidden mt-1.5 pt-1.5 border-t border-slate-700/80">
+            <div class="flex flex-wrap items-center justify-center gap-2 bg-sky-950/70 p-1.5 rounded border border-sky-700 text-[10px] md:text-xs">
                 <span class="font-bold text-sky-300">📍 ลากการ์ด 1-5 ไปวางตรงจุด:</span>
                 <span id="pin-coord-readout" class="font-mono text-slate-200"></span>
                 <div class="flex items-center gap-1.5">
                     <button type="button" onclick="app.resetPinPositions()"
-                        class="px-2 py-1 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded border border-slate-500">
+                        class="px-2 py-0.5 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded border border-slate-500">
                         ↩️ ค่าเริ่มต้น
                     </button>
                     <button type="button" id="btn-save-pins" onclick="app.savePinsToSheet()"
-                        class="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded border border-emerald-400">
+                        class="px-2.5 py-0.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded border border-emerald-400">
                         ☁️ บันทึกลง Sheet
                     </button>
                 </div>
@@ -255,14 +247,98 @@
         </div>
     </header>
 
-    <div class="shrink-0 text-center text-[9px] md:text-xs text-slate-400 mb-1">
-        👆 แตะการ์ดดูกราฟ | 🤏 ซูม/ลากเลื่อน | ⚠️ Warning | 🚨 Critical | ✕ รับทราบ
-    </div>
+    <!-- แถบสรุปค่า 5 จุดแบบอ่านง่าย (Top Live KPI Cards) -->
+    <section aria-label="สรุปค่าเซนเซอร์ทั้ง 5 จุด" class="shrink-0 grid grid-cols-5 gap-1.5">
+        <div id="kpi-card-1" onclick="app.openChart(1)" onmouseenter="app.highlightBadge(1, true)" onmouseleave="app.highlightBadge(1, false)"
+            class="bg-slate-900/90 hover:bg-slate-800/90 border border-slate-700/80 rounded-lg px-2 py-1.5 cursor-pointer transition flex flex-col justify-between">
+            <div class="flex items-center justify-between">
+                <span class="text-[10px] md:text-xs font-bold text-emerald-400">จุดที่ 1</span>
+                <span id="kpi-dot-1" class="w-2 h-2 rounded-full bg-slate-600"></span>
+            </div>
+            <div class="flex items-baseline gap-1 my-0.5">
+                <span id="kpi-n1" class="text-sm md:text-xl font-extrabold font-mono text-slate-100 leading-none">--</span>
+                <span class="text-[9px] md:text-[10px] text-slate-400">dBA</span>
+            </div>
+            <div class="flex items-center justify-between text-[9px] md:text-[10px] font-mono text-slate-400 border-t border-slate-800 pt-0.5">
+                <span>🌡️ <b id="kpi-t1" class="text-amber-300 font-normal">--</b>°</span>
+                <span>💧 <b id="kpi-h1" class="text-sky-300 font-normal">--</b>%</span>
+            </div>
+        </div>
+
+        <div id="kpi-card-2" onclick="app.openChart(2)" onmouseenter="app.highlightBadge(2, true)" onmouseleave="app.highlightBadge(2, false)"
+            class="bg-slate-900/90 hover:bg-slate-800/90 border border-slate-700/80 rounded-lg px-2 py-1.5 cursor-pointer transition flex flex-col justify-between">
+            <div class="flex items-center justify-between">
+                <span class="text-[10px] md:text-xs font-bold text-emerald-400">จุดที่ 2</span>
+                <span id="kpi-dot-2" class="w-2 h-2 rounded-full bg-slate-600"></span>
+            </div>
+            <div class="flex items-baseline gap-1 my-0.5">
+                <span id="kpi-n2" class="text-sm md:text-xl font-extrabold font-mono text-slate-100 leading-none">--</span>
+                <span class="text-[9px] md:text-[10px] text-slate-400">dBA</span>
+            </div>
+            <div class="flex items-center justify-between text-[9px] md:text-[10px] font-mono text-slate-400 border-t border-slate-800 pt-0.5">
+                <span>🌡️ <b id="kpi-t2" class="text-amber-300 font-normal">--</b>°</span>
+                <span>💧 <b id="kpi-h2" class="text-sky-300 font-normal">--</b>%</span>
+            </div>
+        </div>
+
+        <div id="kpi-card-3" onclick="app.openChart(3)" onmouseenter="app.highlightBadge(3, true)" onmouseleave="app.highlightBadge(3, false)"
+            class="bg-slate-900/90 hover:bg-slate-800/90 border border-slate-700/80 rounded-lg px-2 py-1.5 cursor-pointer transition flex flex-col justify-between">
+            <div class="flex items-center justify-between">
+                <span class="text-[10px] md:text-xs font-bold text-emerald-400">จุดที่ 3</span>
+                <span id="kpi-dot-3" class="w-2 h-2 rounded-full bg-slate-600"></span>
+            </div>
+            <div class="flex items-baseline gap-1 my-0.5">
+                <span id="kpi-n3" class="text-sm md:text-xl font-extrabold font-mono text-slate-100 leading-none">--</span>
+                <span class="text-[9px] md:text-[10px] text-slate-400">dBA</span>
+            </div>
+            <div class="flex items-center justify-between text-[9px] md:text-[10px] font-mono text-slate-400 border-t border-slate-800 pt-0.5">
+                <span>🌡️ <b id="kpi-t3" class="text-amber-300 font-normal">--</b>°</span>
+                <span>💧 <b id="kpi-h3" class="text-sky-300 font-normal">--</b>%</span>
+            </div>
+        </div>
+
+        <div id="kpi-card-4" onclick="app.openChart(4)" onmouseenter="app.highlightBadge(4, true)" onmouseleave="app.highlightBadge(4, false)"
+            class="bg-slate-900/90 hover:bg-slate-800/90 border border-slate-700/80 rounded-lg px-2 py-1.5 cursor-pointer transition flex flex-col justify-between">
+            <div class="flex items-center justify-between">
+                <span class="text-[10px] md:text-xs font-bold text-emerald-400">จุดที่ 4</span>
+                <span id="kpi-dot-4" class="w-2 h-2 rounded-full bg-slate-600"></span>
+            </div>
+            <div class="flex items-baseline gap-1 my-0.5">
+                <span id="kpi-n4" class="text-sm md:text-xl font-extrabold font-mono text-slate-100 leading-none">--</span>
+                <span class="text-[9px] md:text-[10px] text-slate-400">dBA</span>
+            </div>
+            <div class="flex items-center justify-between text-[9px] md:text-[10px] font-mono text-slate-400 border-t border-slate-800 pt-0.5">
+                <span>🌡️ <b id="kpi-t4" class="text-amber-300 font-normal">--</b>°</span>
+                <span>💧 <b id="kpi-h4" class="text-sky-300 font-normal">--</b>%</span>
+            </div>
+        </div>
+
+        <div id="kpi-card-5" onclick="app.openChart(5)" onmouseenter="app.highlightBadge(5, true)" onmouseleave="app.highlightBadge(5, false)"
+            class="bg-slate-900/90 hover:bg-slate-800/90 border border-slate-700/80 rounded-lg px-2 py-1.5 cursor-pointer transition flex flex-col justify-between">
+            <div class="flex items-center justify-between">
+                <span class="text-[10px] md:text-xs font-bold text-emerald-400">จุดที่ 5</span>
+                <span id="kpi-dot-5" class="w-2 h-2 rounded-full bg-slate-600"></span>
+            </div>
+            <div class="flex items-baseline gap-1 my-0.5">
+                <span id="kpi-n5" class="text-sm md:text-xl font-extrabold font-mono text-slate-100 leading-none">--</span>
+                <span class="text-[9px] md:text-[10px] text-slate-400">dBA</span>
+            </div>
+            <div class="flex items-center justify-between text-[9px] md:text-[10px] font-mono text-slate-400 border-t border-slate-800 pt-0.5">
+                <span>🌡️ <b id="kpi-t5" class="text-amber-300 font-normal">--</b>°</span>
+                <span>💧 <b id="kpi-h5" class="text-sky-300 font-normal">--</b>%</span>
+            </div>
+        </div>
+    </section>
 
     <div id="toast-container" class="fixed top-4 right-4 z-[60] flex flex-col gap-2 pointer-events-none"></div>
 
     <!-- Map Area -->
-    <main id="map-viewport" class="relative flex-1 min-h-0 w-full bg-slate-900 rounded-lg border border-slate-700 shadow-xl overflow-hidden">
+    <main id="map-viewport" class="relative flex-1 min-h-0 w-full bg-slate-900 rounded-lg border border-slate-700/80 shadow-xl overflow-hidden">
+        <!-- แถบคำแนะนำแบบลอยมุมซ้ายล่าง -->
+        <div class="hidden md:block absolute bottom-2 left-2 z-20 bg-slate-950/80 border border-slate-700/80 rounded px-2.5 py-1 text-[10px] text-slate-300 pointer-events-none">
+            👆 แตะการ์ดดูกราฟ • 🤏 ซูม/ลากเลื่อน • ⚠️ Warn • 🚨 Crit
+        </div>
+
         <!-- แผงปุ่มซูม -->
         <div class="absolute top-2 right-2 z-20 flex flex-col gap-1 bg-slate-900/90 p-1 rounded-lg border border-slate-600 shadow-lg">
             <button type="button" onclick="app.zoomMap(25)" aria-label="ซูมเข้า" class="w-7 h-7 md:w-8 md:h-8 flex items-center justify-center bg-slate-700 hover:bg-emerald-600 active:bg-emerald-500 text-white font-bold rounded text-xs">➕</button>
@@ -272,70 +348,70 @@
 
         <div id="map-scroll-wrapper" class="w-full h-full overflow-auto hide-scroll cursor-grab flex">
             <div id="map-container" class="map-container">
-                <img id="plant-map-img" src="map-bg.jpg" alt="Plant Map" class="w-full h-auto block opacity-85 pointer-events-none select-none">
+                <img id="plant-map-img" src="map-bg.jpg" alt="Plant Map" class="w-full h-auto block opacity-90 pointer-events-none select-none">
 
                 <!-- จุดที่ 1 -->
                 <div id="badge-1" data-node="1" onclick="app.handleBadgeClick(1)" role="button" tabindex="0"
                     aria-label="จุดที่ 1 - ดูกราฟย้อนหลัง"
-                    class="sensor-badge bg-slate-900/90 border-2 border-slate-500 rounded p-1.5 shadow-md text-[10px] hover:border-emerald-400"
+                    class="sensor-badge bg-slate-900/92 border-2 border-slate-500 rounded-md px-2 py-1 shadow-lg text-[11px] hover:border-emerald-400"
                     style="top: 75%; left: 27%;">
                     <button type="button" class="ack-btn warn hidden" onclick="event.stopPropagation(); app.acknowledge(1)" title="รับทราบ" aria-label="รับทราบจุดที่ 1">✕</button>
-                    <div class="font-bold text-emerald-400 border-b border-slate-600 pb-0.5 mb-0.5 text-center text-[11px]">จุดที่ 1</div>
-                    <div class="whitespace-nowrap"><span class="text-amber-400">T:</span> <span id="val-t1" class="font-mono text-slate-100">--</span></div>
-                    <div class="whitespace-nowrap"><span class="text-blue-400">H:</span> <span id="val-h1" class="font-mono text-slate-100">--</span></div>
-                    <div class="whitespace-nowrap"><span class="text-rose-400">N:</span> <span id="val-n1" class="font-mono text-slate-100">--</span></div>
+                    <div class="font-bold text-emerald-400 border-b border-slate-600/80 pb-0.5 mb-0.5 text-center text-[11px]">จุดที่ 1</div>
+                    <div class="whitespace-nowrap"><span class="text-rose-400 font-bold">N:</span> <span id="val-n1" class="font-mono font-bold text-white">--</span></div>
+                    <div class="whitespace-nowrap text-[10px]"><span class="text-amber-400">T:</span> <span id="val-t1" class="font-mono text-slate-200">--</span></div>
+                    <div class="whitespace-nowrap text-[10px]"><span class="text-blue-400">H:</span> <span id="val-h1" class="font-mono text-slate-200">--</span></div>
                     <div class="badge-ts"><span id="ts-1">--:--:--</span></div>
                 </div>
 
                 <!-- จุดที่ 2 -->
                 <div id="badge-2" data-node="2" onclick="app.handleBadgeClick(2)" role="button" tabindex="0"
                     aria-label="จุดที่ 2 - ดูกราฟย้อนหลัง"
-                    class="sensor-badge bg-slate-900/90 border-2 border-slate-500 rounded p-1.5 shadow-md text-[10px] hover:border-emerald-400"
+                    class="sensor-badge bg-slate-900/92 border-2 border-slate-500 rounded-md px-2 py-1 shadow-lg text-[11px] hover:border-emerald-400"
                     style="top: 57%; left: 38%;">
                     <button type="button" class="ack-btn warn hidden" onclick="event.stopPropagation(); app.acknowledge(2)" title="รับทราบ" aria-label="รับทราบจุดที่ 2">✕</button>
-                    <div class="font-bold text-emerald-400 border-b border-slate-600 pb-0.5 mb-0.5 text-center text-[11px]">จุดที่ 2</div>
-                    <div class="whitespace-nowrap"><span class="text-amber-400">T:</span> <span id="val-t2" class="font-mono text-slate-100">--</span></div>
-                    <div class="whitespace-nowrap"><span class="text-blue-400">H:</span> <span id="val-h2" class="font-mono text-slate-100">--</span></div>
-                    <div class="whitespace-nowrap"><span class="text-rose-400">N:</span> <span id="val-n2" class="font-mono text-slate-100">--</span></div>
+                    <div class="font-bold text-emerald-400 border-b border-slate-600/80 pb-0.5 mb-0.5 text-center text-[11px]">จุดที่ 2</div>
+                    <div class="whitespace-nowrap"><span class="text-rose-400 font-bold">N:</span> <span id="val-n2" class="font-mono font-bold text-white">--</span></div>
+                    <div class="whitespace-nowrap text-[10px]"><span class="text-amber-400">T:</span> <span id="val-t2" class="font-mono text-slate-200">--</span></div>
+                    <div class="whitespace-nowrap text-[10px]"><span class="text-blue-400">H:</span> <span id="val-h2" class="font-mono text-slate-200">--</span></div>
                     <div class="badge-ts"><span id="ts-2">--:--:--</span></div>
                 </div>
 
                 <!-- จุดที่ 3 -->
                 <div id="badge-3" data-node="3" onclick="app.handleBadgeClick(3)" role="button" tabindex="0"
                     aria-label="จุดที่ 3 - ดูกราฟย้อนหลัง"
-                    class="sensor-badge bg-slate-900/90 border-2 border-slate-500 rounded p-1.5 shadow-md text-[10px] hover:border-emerald-400"
+                    class="sensor-badge bg-slate-900/92 border-2 border-slate-500 rounded-md px-2 py-1 shadow-lg text-[11px] hover:border-emerald-400"
                     style="top: 44%; left: 52%;">
                     <button type="button" class="ack-btn warn hidden" onclick="event.stopPropagation(); app.acknowledge(3)" title="รับทราบ" aria-label="รับทราบจุดที่ 3">✕</button>
-                    <div class="font-bold text-emerald-400 border-b border-slate-600 pb-0.5 mb-0.5 text-center text-[11px]">จุดที่ 3</div>
-                    <div class="whitespace-nowrap"><span class="text-amber-400">T:</span> <span id="val-t3" class="font-mono text-slate-100">--</span></div>
-                    <div class="whitespace-nowrap"><span class="text-blue-400">H:</span> <span id="val-h3" class="font-mono text-slate-100">--</span></div>
-                    <div class="whitespace-nowrap"><span class="text-rose-400">N:</span> <span id="val-n3" class="font-mono text-slate-100">--</span></div>
+                    <div class="font-bold text-emerald-400 border-b border-slate-600/80 pb-0.5 mb-0.5 text-center text-[11px]">จุดที่ 3</div>
+                    <div class="whitespace-nowrap"><span class="text-rose-400 font-bold">N:</span> <span id="val-n3" class="font-mono font-bold text-white">--</span></div>
+                    <div class="whitespace-nowrap text-[10px]"><span class="text-amber-400">T:</span> <span id="val-t3" class="font-mono text-slate-200">--</span></div>
+                    <div class="whitespace-nowrap text-[10px]"><span class="text-blue-400">H:</span> <span id="val-h3" class="font-mono text-slate-200">--</span></div>
                     <div class="badge-ts"><span id="ts-3">--:--:--</span></div>
                 </div>
 
                 <!-- จุดที่ 4 -->
                 <div id="badge-4" data-node="4" onclick="app.handleBadgeClick(4)" role="button" tabindex="0"
                     aria-label="จุดที่ 4 - ดูกราฟย้อนหลัง"
-                    class="sensor-badge bg-slate-900/90 border-2 border-slate-500 rounded p-1.5 shadow-md text-[10px] hover:border-emerald-400"
+                    class="sensor-badge bg-slate-900/92 border-2 border-slate-500 rounded-md px-2 py-1 shadow-lg text-[11px] hover:border-emerald-400"
                     style="top: 19%; left: 63%;">
                     <button type="button" class="ack-btn warn hidden" onclick="event.stopPropagation(); app.acknowledge(4)" title="รับทราบ" aria-label="รับทราบจุดที่ 4">✕</button>
-                    <div class="font-bold text-emerald-400 border-b border-slate-600 pb-0.5 mb-0.5 text-center text-[11px]">จุดที่ 4</div>
-                    <div class="whitespace-nowrap"><span class="text-amber-400">T:</span> <span id="val-t4" class="font-mono text-slate-100">--</span></div>
-                    <div class="whitespace-nowrap"><span class="text-blue-400">H:</span> <span id="val-h4" class="font-mono text-slate-100">--</span></div>
-                    <div class="whitespace-nowrap"><span class="text-rose-400">N:</span> <span id="val-n4" class="font-mono text-slate-100">--</span></div>
+                    <div class="font-bold text-emerald-400 border-b border-slate-600/80 pb-0.5 mb-0.5 text-center text-[11px]">จุดที่ 4</div>
+                    <div class="whitespace-nowrap"><span class="text-rose-400 font-bold">N:</span> <span id="val-n4" class="font-mono font-bold text-white">--</span></div>
+                    <div class="whitespace-nowrap text-[10px]"><span class="text-amber-400">T:</span> <span id="val-t4" class="font-mono text-slate-200">--</span></div>
+                    <div class="whitespace-nowrap text-[10px]"><span class="text-blue-400">H:</span> <span id="val-h4" class="font-mono text-slate-200">--</span></div>
                     <div class="badge-ts"><span id="ts-4">--:--:--</span></div>
                 </div>
 
                 <!-- จุดที่ 5 -->
                 <div id="badge-5" data-node="5" onclick="app.handleBadgeClick(5)" role="button" tabindex="0"
                     aria-label="จุดที่ 5 - ดูกราฟย้อนหลัง"
-                    class="sensor-badge bg-slate-900/90 border-2 border-slate-500 rounded p-1.5 shadow-md text-[10px] hover:border-emerald-400"
+                    class="sensor-badge bg-slate-900/92 border-2 border-slate-500 rounded-md px-2 py-1 shadow-lg text-[11px] hover:border-emerald-400"
                     style="top: 10%; left: 78%;">
                     <button type="button" class="ack-btn warn hidden" onclick="event.stopPropagation(); app.acknowledge(5)" title="รับทราบ" aria-label="รับทราบจุดที่ 5">✕</button>
-                    <div class="font-bold text-emerald-400 border-b border-slate-600 pb-0.5 mb-0.5 text-center text-[11px]">จุดที่ 5</div>
-                    <div class="whitespace-nowrap"><span class="text-amber-400">T:</span> <span id="val-t5" class="font-mono text-slate-100">--</span></div>
-                    <div class="whitespace-nowrap"><span class="text-blue-400">H:</span> <span id="val-h5" class="font-mono text-slate-100">--</span></div>
-                    <div class="whitespace-nowrap"><span class="text-rose-400">N:</span> <span id="val-n5" class="font-mono text-slate-100">--</span></div>
+                    <div class="font-bold text-emerald-400 border-b border-slate-600/80 pb-0.5 mb-0.5 text-center text-[11px]">จุดที่ 5</div>
+                    <div class="whitespace-nowrap"><span class="text-rose-400 font-bold">N:</span> <span id="val-n5" class="font-mono font-bold text-white">--</span></div>
+                    <div class="whitespace-nowrap text-[10px]"><span class="text-amber-400">T:</span> <span id="val-t5" class="font-mono text-slate-200">--</span></div>
+                    <div class="whitespace-nowrap text-[10px]"><span class="text-blue-400">H:</span> <span id="val-h5" class="font-mono text-slate-200">--</span></div>
                     <div class="badge-ts"><span id="ts-5">--:--:--</span></div>
                 </div>
             </div>
@@ -373,6 +449,10 @@
     </div>
 
     <script>
+    if (window.self !== window.top) {
+        document.body.classList.add('in-iframe');
+    }
+
     class ScadaApp {
         constructor() {
             this.config = {
@@ -388,7 +468,7 @@
                 DEFAULT_CRIT: 95,
                 FETCH_TIMEOUT: 10000,
                 ALARM_SYNC_MS: 30000,
-                BASE_MAP_WIDTH: 1200,
+                BASE_MAP_WIDTH: 850,
                 DEFAULT_PINS: {
                     1: { top: 75, left: 27 },
                     2: { top: 57, left: 38 },
@@ -442,9 +522,7 @@
         cacheRefs() {
             this.refs.status           = document.getElementById('connection-status');
             this.refs.btnAudio         = document.getElementById('btn-audio');
-            this.refs.btnAudioDesk     = document.getElementById('btn-audio-desktop');
             this.refs.btnEditPin       = document.getElementById('btn-edit-pin');
-            this.refs.btnEditPinMobile = document.getElementById('btn-edit-pin-mobile');
             this.refs.btnSavePins      = document.getElementById('btn-save-pins');
             this.refs.pinCoordBar      = document.getElementById('pin-coord-bar');
             this.refs.pinCoordReadout  = document.getElementById('pin-coord-readout');
@@ -470,6 +548,11 @@
             this.refs.timestamps = [];
             this.refs.ackBtns    = [];
             this.refs.offInputs  = [];
+            this.refs.kpiCards   = [];
+            this.refs.kpiDots    = [];
+            this.refs.kpiN       = [];
+            this.refs.kpiT       = [];
+            this.refs.kpiH       = [];
 
             for (let i = 1; i <= this.config.NODE_COUNT; i++) {
                 this.refs.badges[i]     = document.getElementById('badge-' + i);
@@ -478,9 +561,20 @@
                 this.refs.valsN[i]      = document.getElementById('val-n' + i);
                 this.refs.timestamps[i] = document.getElementById('ts-' + i);
                 this.refs.offInputs[i]  = document.getElementById('off-' + i);
+                this.refs.kpiCards[i]   = document.getElementById('kpi-card-' + i);
+                this.refs.kpiDots[i]    = document.getElementById('kpi-dot-' + i);
+                this.refs.kpiN[i]       = document.getElementById('kpi-n' + i);
+                this.refs.kpiT[i]       = document.getElementById('kpi-t' + i);
+                this.refs.kpiH[i]       = document.getElementById('kpi-h' + i);
                 const badge = this.refs.badges[i];
                 this.refs.ackBtns[i] = badge ? badge.querySelector('.ack-btn') : null;
             }
+        }
+
+        highlightBadge(nodeId, active) {
+            const badge = this.refs.badges[nodeId];
+            if (!badge) return;
+            badge.classList.toggle('is-highlighted', !!active);
         }
 
         // ---------- PIN POSITIONS & GOOGLE SHEET SYNC ----------
@@ -524,16 +618,12 @@
             this.refs.pinCoordBar.classList.toggle('hidden', !this.state.editPinMode);
 
             if (this.state.editPinMode) {
-                this.refs.btnEditPin.classList.replace('bg-slate-700', 'bg-sky-600');
+                this.refs.btnEditPin.classList.replace('bg-slate-800', 'bg-sky-600');
                 this.refs.btnEditPin.classList.replace('text-sky-300', 'text-white');
-                this.refs.btnEditPinMobile.classList.replace('bg-slate-700', 'bg-sky-600');
-                this.refs.btnEditPinMobile.classList.replace('text-sky-300', 'text-white');
                 this.showToast('📍 ลากการ์ดไปวางตรงจุด แล้วกด "บันทึกลง Sheet"', 'info');
             } else {
-                this.refs.btnEditPin.classList.replace('bg-sky-600', 'bg-slate-700');
+                this.refs.btnEditPin.classList.replace('bg-sky-600', 'bg-slate-800');
                 this.refs.btnEditPin.classList.replace('text-white', 'text-sky-300');
-                this.refs.btnEditPinMobile.classList.replace('bg-sky-600', 'bg-slate-700');
-                this.refs.btnEditPinMobile.classList.replace('text-white', 'text-sky-300');
             }
             this.fitMapToViewport();
         }
@@ -725,7 +815,7 @@
             const targetWidth = Math.round(fitWidth * this.state.mapZoom);
             this.refs.mapContainer.style.width = targetWidth + 'px';
 
-            const badgeScale = Math.max(0.38, Math.min(1.35, targetWidth / this.config.BASE_MAP_WIDTH));
+            const badgeScale = Math.max(0.55, Math.min(1.45, targetWidth / this.config.BASE_MAP_WIDTH));
             this.refs.mapContainer.style.setProperty('--badge-scale', badgeScale.toFixed(3));
         }
 
@@ -752,21 +842,15 @@
                 if (this.state.audioCtx.state === 'suspended') this.state.audioCtx.resume();
                 this.state.audioEnabled = true;
 
-                const onStyle = 'bg-emerald-600 text-white border-emerald-400';
-                this.refs.btnAudio.textContent = '🔊 เสียงทำงาน';
-                this.refs.btnAudio.className = `md:hidden px-2.5 py-1 text-[10px] font-bold rounded border shadow min-h-[30px] ${onStyle}`;
-                this.refs.btnAudioDesk.textContent = '🔊 เสียงทำงาน';
-                this.refs.btnAudioDesk.className = `hidden md:flex px-3 py-1 text-xs font-bold rounded border items-center gap-1 min-h-[30px] ${onStyle}`;
+                this.refs.btnAudio.textContent = '🔊 เสียง: เปิด';
+                this.refs.btnAudio.className = 'px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold rounded border border-emerald-400 shadow transition';
                 this.showToast('🔊 ระบบเสียงเปิด', 'success');
             } else {
                 this.state.audioEnabled = false;
                 this.stopSiren();
 
-                const redStyle = 'bg-rose-600 text-white border-rose-400';
-                this.refs.btnAudio.textContent = '🔇 เปิดเสียง';
-                this.refs.btnAudio.className = `md:hidden px-2.5 py-1 text-[10px] font-bold rounded border shadow min-h-[30px] ${redStyle}`;
-                this.refs.btnAudioDesk.textContent = '🔇 ระบบเสียงปิดอยู่';
-                this.refs.btnAudioDesk.className = `hidden md:flex px-3 py-1 hover:bg-rose-500 text-xs font-bold rounded border items-center gap-1 min-h-[30px] ${redStyle}`;
+                this.refs.btnAudio.textContent = '🔇 เสียง: ปิด';
+                this.refs.btnAudio.className = 'px-2.5 py-1 bg-rose-600 hover:bg-rose-500 text-white text-[11px] font-bold rounded border border-rose-400 shadow transition';
             }
         }
 
@@ -1215,7 +1299,7 @@
             this.client = client;
 
             client.on('connect', () => {
-                this.updateStatus('🟢 Connected', 'emerald');
+                this.updateStatus('🟢 Live', 'emerald');
                 client.subscribe(this.config.MQTT_TOPIC, { qos: 0 });
             });
             client.on('reconnect', () => this.updateStatus('🟡 Reconnecting...', 'amber'));
@@ -1235,7 +1319,7 @@
                     if (!data || typeof data !== 'object') return;
                     const merged = Object.assign({}, this.state.lastData || {}, data);
                     this.queueUpdate(merged);
-                    this.updateStatus('🟢 Connected (Live)', 'emerald');
+                    this.updateStatus('🟢 Live', 'emerald');
                     if (this.state.dataTimeout) clearTimeout(this.state.dataTimeout);
                     this.state.dataTimeout = setTimeout(() => this.clearStaleData(), this.config.STALE_MS);
                 } catch (e) {
@@ -1246,9 +1330,9 @@
 
         updateStatus(text, color) {
             const map = {
-                emerald: 'text-[9px] md:text-xs text-emerald-400 mt-0.5 font-bold',
-                amber:   'text-[9px] md:text-xs text-amber-400 mt-0.5 font-bold',
-                red:     'text-[9px] md:text-xs text-red-400 mt-0.5 font-bold'
+                emerald: 'text-[10px] md:text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-950/80 border border-emerald-700/70 text-emerald-400',
+                amber:   'text-[10px] md:text-xs font-bold px-2 py-0.5 rounded-full bg-amber-950/80 border border-amber-700/70 text-amber-400',
+                red:     'text-[10px] md:text-xs font-bold px-2 py-0.5 rounded-full bg-rose-950/80 border border-rose-700/70 text-rose-400'
             };
             this.refs.status.textContent = text;
             this.refs.status.className = map[color] || map.emerald;
@@ -1285,27 +1369,51 @@
                     valN = Math.max(30, Math.min(130, rawOrCompN - espAppliedOff + webTargetOff));
                 }
 
-                this.refs.valsT[i].textContent = valT !== null ? valT.toFixed(1) : '--';
-                this.refs.valsH[i].textContent = valH !== null ? valH.toFixed(1) : '--';
+                const tStr = valT !== null ? valT.toFixed(1) : '--';
+                const hStr = valH !== null ? valH.toFixed(1) : '--';
+
+                this.refs.valsT[i].textContent = tStr;
+                this.refs.valsH[i].textContent = hStr;
+                if (this.refs.kpiT[i]) this.refs.kpiT[i].textContent = tStr;
+                if (this.refs.kpiH[i]) this.refs.kpiH[i].textContent = hStr;
 
                 const elN = this.refs.valsN[i];
+                const kpiN = this.refs.kpiN[i];
+                const kpiCard = this.refs.kpiCards[i];
+                const kpiDot = this.refs.kpiDots[i];
                 const badge = this.refs.badges[i];
                 const ackBtn = this.refs.ackBtns[i];
 
                 badge.classList.remove(
                     'badge-warning', 'badge-critical',
                     'badge-warning-ack', 'badge-critical-ack',
-                    'bg-slate-900/90', 'border-slate-500'
+                    'bg-slate-900/92', 'border-slate-500'
                 );
                 elN.classList.remove('alarm-text', 'warn-text');
 
+                if (kpiCard) {
+                    kpiCard.classList.remove('border-amber-500', 'border-rose-500', 'bg-rose-950/40', 'bg-amber-950/30');
+                    kpiCard.classList.add('border-slate-700/80');
+                }
+                if (kpiN) kpiN.className = 'text-sm md:text-xl font-extrabold font-mono text-slate-100 leading-none';
+                if (kpiDot) kpiDot.className = 'w-2 h-2 rounded-full bg-emerald-400';
+
                 if (valN !== null) {
-                    elN.textContent = valN.toFixed(1);
+                    const nStr = valN.toFixed(1);
+                    elN.textContent = nStr;
+                    if (kpiN) kpiN.textContent = nStr;
                     const isAcked = this.state.acknowledged.has(i);
 
                     if (valN >= crit) {
                         badge.classList.add(isAcked ? 'badge-critical-ack' : 'badge-critical');
                         elN.classList.add('alarm-text');
+                        if (kpiCard) {
+                            kpiCard.classList.remove('border-slate-700/80');
+                            kpiCard.classList.add('border-rose-500', 'bg-rose-950/40');
+                        }
+                        if (kpiN) kpiN.className = 'text-sm md:text-xl font-extrabold font-mono text-rose-400 leading-none';
+                        if (kpiDot) kpiDot.className = 'w-2 h-2 rounded-full bg-rose-500 animate-ping';
+
                         if (!isAcked) anyCriticalUnacked = true;
                         if (ackBtn) {
                             ackBtn.classList.remove('hidden', 'warn');
@@ -1315,6 +1423,13 @@
                     } else if (valN >= warn) {
                         badge.classList.add(isAcked ? 'badge-warning-ack' : 'badge-warning');
                         elN.classList.add('warn-text');
+                        if (kpiCard) {
+                            kpiCard.classList.remove('border-slate-700/80');
+                            kpiCard.classList.add('border-amber-500', 'bg-amber-950/30');
+                        }
+                        if (kpiN) kpiN.className = 'text-sm md:text-xl font-extrabold font-mono text-amber-400 leading-none';
+                        if (kpiDot) kpiDot.className = 'w-2 h-2 rounded-full bg-amber-400';
+
                         if (ackBtn) {
                             ackBtn.classList.remove('hidden', 'crit');
                             ackBtn.classList.add('warn');
@@ -1322,13 +1437,15 @@
                         }
                     } else {
                         this.state.acknowledged.delete(i);
-                        badge.classList.add('bg-slate-900/90', 'border-slate-500');
+                        badge.classList.add('bg-slate-900/92', 'border-slate-500');
                         if (ackBtn) ackBtn.classList.add('hidden');
                     }
                 } else {
                     elN.textContent = '--';
+                    if (kpiN) kpiN.textContent = '--';
+                    if (kpiDot) kpiDot.className = 'w-2 h-2 rounded-full bg-slate-600';
                     this.state.acknowledged.delete(i);
-                    badge.classList.add('bg-slate-900/90', 'border-slate-500');
+                    badge.classList.add('bg-slate-900/92', 'border-slate-500');
                     if (ackBtn) ackBtn.classList.add('hidden');
                 }
 
@@ -1346,18 +1463,29 @@
         clearStaleData() {
             this.state.stale = true;
             this.state.dataTimeout = null;
-            this.updateStatus('🟠 Stale Data (No Update)', 'amber');
+            this.updateStatus('🟠 Stale Data', 'amber');
 
             for (let i = 1; i <= this.config.NODE_COUNT; i++) {
                 this.refs.valsT[i].textContent = '--';
                 this.refs.valsH[i].textContent = '--';
                 this.refs.valsN[i].textContent = '--';
+                if (this.refs.kpiT[i]) this.refs.kpiT[i].textContent = '--';
+                if (this.refs.kpiH[i]) this.refs.kpiH[i].textContent = '--';
+                if (this.refs.kpiN[i]) {
+                    this.refs.kpiN[i].textContent = '--';
+                    this.refs.kpiN[i].className = 'text-sm md:text-xl font-extrabold font-mono text-slate-100 leading-none';
+                }
+                if (this.refs.kpiDot[i]) this.refs.kpiDot[i].className = 'w-2 h-2 rounded-full bg-slate-600';
+                if (this.refs.kpiCards[i]) {
+                    this.refs.kpiCards[i].classList.remove('border-amber-500', 'border-rose-500', 'bg-rose-950/40', 'bg-amber-950/30');
+                    this.refs.kpiCards[i].classList.add('border-slate-700/80');
+                }
                 if (this.refs.timestamps[i]) this.refs.timestamps[i].textContent = '--:--:--';
 
                 const badge = this.refs.badges[i];
                 const ackBtn = this.refs.ackBtns[i];
                 badge.classList.remove('badge-warning', 'badge-critical', 'badge-warning-ack', 'badge-critical-ack');
-                badge.classList.add('bg-slate-900/90', 'border-slate-500');
+                badge.classList.add('bg-slate-900/92', 'border-slate-500');
                 this.refs.valsN[i].classList.remove('alarm-text', 'warn-text');
                 if (ackBtn) ackBtn.classList.add('hidden');
             }
